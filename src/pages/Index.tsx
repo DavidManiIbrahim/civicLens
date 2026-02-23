@@ -9,16 +9,11 @@ import heroImage from "/images/PARLIAMENT-4-1-678x381.jpg";
 // import heroImage from "@/assets/hero-capitol.jpg";
 import { supabase } from "@/integrations/supabase/client";
 
-export default function Index() {
-  const [hearings, setHearings] = useState<any[]>([]);
+import { useHearings, useAnnouncements } from "@/hooks/useData";
 
-  useEffect(() => {
-    supabase
-      .from("hearings")
-      .select("*")
-      .order("scheduled_at", { ascending: false })
-      .then(({ data }) => { if (data) setHearings(data); });
-  }, []);
+export default function Index() {
+  const { data: hearings = [] } = useHearings();
+  const { data: announcements = [] } = useAnnouncements(true);
 
   const liveCount = hearings.filter(h => h.status === "live").length;
   const totalViewers = hearings.reduce((sum, h) => sum + (h.viewers || 0), 0);
@@ -79,6 +74,25 @@ export default function Index() {
           ))}
         </div>
       </section>
+
+      {/* Announcements */}
+      {announcements.length > 0 && (
+        <section className="bg-muted/30 py-16">
+          <div className="container">
+            <h2 className="mb-8 font-display text-2xl font-bold text-foreground">Latest Updates</h2>
+            <div className="grid gap-6 md:grid-cols-3">
+              {announcements.map((post) => (
+                <div key={post.id} className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                  <span className="text-xs font-semibold text-accent uppercase tracking-wider">Circular</span>
+                  <h3 className="mt-2 mb-3 text-lg font-bold line-clamp-1">{post.title}</h3>
+                  <p className="mb-4 text-sm text-muted-foreground line-clamp-3">{post.content}</p>
+                  <p className="text-[10px] text-muted-foreground mt-4">{new Date(post.created_at).toLocaleDateString()}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </Layout>
   );
 }

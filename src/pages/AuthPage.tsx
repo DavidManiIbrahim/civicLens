@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Landmark, LogIn, UserPlus } from "lucide-react";
+import BgImage from "/images/image.png";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AuthPage() {
@@ -28,7 +29,7 @@ export default function AuthPage() {
       if (error) {
         toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
       } else {
-        toast({ title: "Check your email", description: "We sent you a verification link to confirm your account." });
+        toast({ title: "Signup successful", description: "Please goto the signin page login with your credentials." });
       }
     } else {
       const { error } = await signIn(email, password);

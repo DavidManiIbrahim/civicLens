@@ -87,9 +87,12 @@ export default function Layout({ children }: { children: ReactNode }) {
 
             {user ? (
               <div className="ml-2 flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/20 text-accent">
+                <Link
+                  to="/profile"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/20 text-accent transition-transform hover:scale-110"
+                >
                   <User className="h-4 w-4" />
-                </span>
+                </Link>
                 <button
                   onClick={async () => { await signOut(); navigate("/"); }}
                   className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -143,8 +146,8 @@ export default function Layout({ children }: { children: ReactNode }) {
                 to="/admin"
                 onClick={() => setMobileOpen(false)}
                 className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors ${location.pathname === "/admin"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-accent hover:bg-accent/10"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-accent hover:bg-accent/10"
                   }`}
               >
                 <Shield className="h-4 w-4" />
