@@ -11,9 +11,19 @@ import { useAuth } from "@/hooks/useAuth";
 import LandingPage from "@/components/LandingPage";
 
 export default function Index() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const { data: hearings = [] } = useHearings();
   const { data: announcements = [] } = useAnnouncements(true);
+
+  if (loading && !user) {
+    return (
+      <Layout>
+        <div className="flex min-h-[80vh] items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent shadow-glow" />
+        </div>
+      </Layout>
+    );
+  }
 
   if (!user) {
     return (

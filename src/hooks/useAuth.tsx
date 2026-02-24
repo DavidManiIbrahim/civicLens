@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface AuthContextType {
   user: User | null;
@@ -16,25 +17,52 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
 
-    if (!error && data) {
-      setProfile(data);
+      if (!error && data) {
+        setProfile(data);
+      }
+    } catch (err) {
+      console.error("Error fetching profile:", err);
     }
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          if (session?.user) {
+            await fetchProfile(session.user.id);
+          }
+        }
+      } catch (err) {
+        console.error("Auth initialization error:", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log(`🔔 Auth State Change: ${event}`, session ? "User Found" : "No User");
+      if (!mounted) return;
+
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -45,16 +73,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      }
-      setLoading(false);
-    });
+    initializeAuth();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const isAdmin = profile?.role === "admin";
@@ -80,7 +104,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    console.log("🚀 Starting sign out process...");
+    try {
+      // 1. Tell Supabase to end the session
+      await supabase.auth.signOut();
+      console.log("✅ Supabase auth.signOut() completed.");
+    } catch (err) {
+      console.error("❌ Error signing out from Supabase:", err);
+    } finally {
+      console.log("🧹 Clearing local storage and reactive state...");
+
+      // 2. Clear all Supabase related keys from LocalStorage
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith("sb-") || key.includes("supabase")) {
+          localStorage.removeItem(key);
+          console.log(`🗑️ Removed key: ${key}`);
+        }
+      });
+
+      // 3. Clear react-query cache
+      queryClient.clear();
+      console.log("✨ React Query cache cleared.");
+
+      // 4. Reset local auth state
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      console.log("👤 Local user state reset to null.");
+
+      // 5. Force a hard reload to the home page (landing page)
+      console.log("🔄 Redirecting to home via hard reload...");
+      window.location.replace("/");
+      // Secondary fallback to ensure reload triggers if already at "/"
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    }
   };
 
   return (

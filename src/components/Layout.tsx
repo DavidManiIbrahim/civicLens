@@ -104,7 +104,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                   <User className="h-4 w-4" />
                 </Link>
                 <button
-                  onClick={async () => { await signOut(); navigate("/"); }}
+                  onClick={() => { console.log("🖱️ Desktop Sign Out button clicked"); signOut(); }}
                   className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   <LogOut className="h-4 w-4" />
@@ -166,7 +166,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             )}
             {user ? (
               <button
-                onClick={async () => { await signOut(); setMobileOpen(false); navigate("/"); }}
+                onClick={() => { console.log("🖱️ Mobile Sign Out button clicked"); signOut(); setMobileOpen(false); }}
                 className="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-muted-foreground hover:bg-muted"
               >
                 <LogOut className="h-4 w-4" />

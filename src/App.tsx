@@ -1,9 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient } from "@tanstack/react-query";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
@@ -19,23 +17,15 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      gcTime: 1000 * 60 * 60 * 24, // Keep data in cache for 24 hours
       staleTime: 1000 * 60 * 5, // Data is fresh for 5 minutes
     },
   },
 });
 
-const persister = createSyncStoragePersister({
-  storage: window.localStorage,
-});
-
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const App = () => (
-  <PersistQueryClientProvider
-    client={queryClient}
-    persistOptions={{ persister }}
-  >
+  <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -47,7 +37,7 @@ const App = () => (
             <Route path="/sentiment" element={<ProtectedRoute><SentimentDashboard /></ProtectedRoute>} />
             <Route path="/peoples-view" element={<ProtectedRoute><PeoplesView /></ProtectedRoute>} />
             <Route path="/insights" element={<ProtectedRoute><InsightsPage /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="*" element={<NotFound />} />
@@ -55,7 +45,7 @@ const App = () => (
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
-  </PersistQueryClientProvider>
+  </QueryClientProvider>
 );
 
 export default App;

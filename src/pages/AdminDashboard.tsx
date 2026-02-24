@@ -36,6 +36,8 @@ import {
 type Tab = "overview" | "hearings" | "users" | "announcements" | "analytics" | "settings";
 
 
+import AdminAuth from "@/components/admin/AdminAuth";
+
 export default function AdminDashboard() {
     const { user, isAdmin } = useAuth();
     const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -92,15 +94,7 @@ export default function AdminDashboard() {
     };
 
     if (!isAdmin) {
-        return (
-            <Layout>
-                <div className="container py-20 text-center">
-                    <Shield className="mx-auto h-12 w-12 text-destructive opacity-20" />
-                    <h1 className="mt-4 text-2xl font-bold">Access Denied</h1>
-                    <p className="mt-2 text-muted-foreground">This area is reserved for government administrators.</p>
-                </div>
-            </Layout>
-        );
+        return <AdminAuth />;
     }
 
     const sidebarItems = [
