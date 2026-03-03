@@ -143,33 +143,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    console.log("🚀 EXPLOSIVE SIGN OUT INITIATED");
-
-    // 1. Attempt Supabase signout (non-blocking)
-    supabase.auth.signOut().catch(err => console.error("Supabase signOut error:", err));
-
-    // 2. Clear app-specific localStorage (keep auth tokens)
-    const appKeys = Object.keys(localStorage).filter(k => k.startsWith("app:"));
-    appKeys.forEach(k => localStorage.removeItem(k));
-    console.log("🧹 App localStorage cleared.");
-
-    // 3. Clear query cache
+    // 1. Actually await the signout so tokens get cleared
     try {
-      queryClient.clear();
-      console.log("✨ Query cache cleared.");
-    } catch (e) {
-      console.error("QueryClient clear error:", e);
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch (err) {
+      console.warn("Supabase signOut error:", err);
     }
 
-    // 4. Reset all reactive states
+    // 2. Manually remove any remaining supabase auth keys
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith("sb-") || k.startsWith("app:")) {
+        localStorage.removeItem(k);
+      }
+    });
+
+    // 3. Clear query cache
+    try { queryClient.clear(); } catch {}
+
+    // 4. Reset state
     setUser(null);
     setSession(null);
     setProfile(null);
     setLoading(false);
-    console.log("👤 All reactive states reset.");
 
-    // 5. Nuclear option: hard redirect to home
-    console.log("☢️ Executing hard reload to home...");
+    // 5. Redirect
     window.location.href = window.location.origin;
   };
 
