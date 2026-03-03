@@ -25,7 +25,6 @@ import SentimentCharts from "@/components/SentimentCharts";
 import {
     useHearings,
     useProfiles,
-    useAnnouncements,
     useComments,
     useUpdateHearingMutation,
     useDeleteHearingMutation,
@@ -33,8 +32,6 @@ import {
     useUpdateProfileMutation,
     useDeleteProfileMutation,
     useRecalculateSentimentMutation,
-    useUpdateAnnouncementMutation,
-    useDeleteAnnouncementMutation
 } from "@/hooks/useData";
 
 type Tab = "overview" | "hearings" | "users" | "announcements" | "analytics" | "settings";
@@ -43,7 +40,7 @@ type Tab = "overview" | "hearings" | "users" | "announcements" | "analytics" | "
 import AdminAuth from "@/components/admin/AdminAuth";
 
 export default function AdminDashboard() {
-    const { user, isAdmin } = useAuth();
+    const { user, isAdmin, loading } = useAuth();
     const [activeTab, setActiveTab] = useState<Tab>("overview");
     const [isAddingHearing, setIsAddingHearing] = useState(false);
     const [isAddingAnnouncement, setIsAddingAnnouncement] = useState(false);
@@ -53,7 +50,8 @@ export default function AdminDashboard() {
     // Queries
     const { data: hearings = [], isLoading: loadingHearings } = useHearings();
     const { data: users = [], isLoading: loadingProfiles } = useProfiles();
-    const { data: announcements = [], isLoading: loadingAnnouncements } = useAnnouncements(false);
+    const announcements: any[] = [];
+    const loadingAnnouncements = false;
     const { data: comments = [] } = useComments();
 
     // Mutations
@@ -63,8 +61,9 @@ export default function AdminDashboard() {
     const updateProfileMutation = useUpdateProfileMutation();
     const deleteProfileMutation = useDeleteProfileMutation();
     const recalcSentimentMutation = useRecalculateSentimentMutation();
-    const updateAnnouncementMutation = useUpdateAnnouncementMutation();
-    const deleteAnnouncementMutation = useDeleteAnnouncementMutation();
+    // Announcement mutations placeholder (table not yet created)
+    const updateAnnouncementMutation = { mutate: (_a: any, _b?: any) => {} } as any;
+    const deleteAnnouncementMutation = { mutate: (_a: any, _b?: any) => {} } as any;
 
     const updateHearingStatus = async (hearingId: string, newStatus: string) => {
         updateHearingStatusMutation.mutate({ id: hearingId, status: newStatus }, {
@@ -100,6 +99,17 @@ export default function AdminDashboard() {
             onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
         });
     };
+
+    // Show loading while auth/profile is being fetched
+    if (loading) {
+        return (
+            <Layout>
+                <div className="flex h-screen items-center justify-center">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                </div>
+            </Layout>
+        );
+    }
 
     if (!isAdmin) {
         return <AdminAuth />;

@@ -6,14 +6,14 @@ import { Radio, Users, MessageSquare, TrendingUp, ArrowRight } from "lucide-reac
 import { Link } from "react-router-dom";
 import heroImage from "/images/PARLIAMENT-4-1-678x381.jpg";
 import { supabase } from "@/integrations/supabase/client";
-import { useHearings, useAnnouncements } from "@/hooks/useData";
+import { useHearings } from "@/hooks/useData";
 import { useAuth } from "@/hooks/useAuth";
 import LandingPage from "@/components/LandingPage";
 
 export default function Index() {
   const { user, loading } = useAuth();
   const { data: hearings = [] } = useHearings();
-  const { data: announcements = [] } = useAnnouncements(true);
+  const announcements: any[] = [];
 
   if (loading && !user) {
     return (

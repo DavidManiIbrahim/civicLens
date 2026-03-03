@@ -20,12 +20,16 @@ export default function VotePanel({ hearingId }: VotePanelProps) {
   }, [hearingId, user]);
 
   const fetchVotes = async () => {
-    const { data: votes } = await supabase.from("votes").select("vote_type, user_id").eq("hearing_id", hearingId);
+    const { data: votes } = await supabase
+      .from("votes")
+      .select("vote_type, user_id")
+      .eq("hearing_id", hearingId as any);
     if (votes) {
-      setForCount(votes.filter((v) => v.vote_type === "for").length);
-      setAgainstCount(votes.filter((v) => v.vote_type === "against").length);
+      const typedVotes = votes as any[];
+      setForCount(typedVotes.filter((v) => v.vote_type === "for").length);
+      setAgainstCount(typedVotes.filter((v) => v.vote_type === "against").length);
       if (user) {
-        const myVote = votes.find((v) => v.user_id === user.id);
+        const myVote = typedVotes.find((v) => v.user_id === user.id);
         setUserVote(myVote?.vote_type ?? null);
       }
     }
@@ -38,13 +42,13 @@ export default function VotePanel({ hearingId }: VotePanelProps) {
     }
 
     if (userVote === voteType) {
-      await supabase.from("votes").delete().eq("hearing_id", hearingId).eq("user_id", user.id);
+      await supabase.from("votes").delete().eq("hearing_id", hearingId as any).eq("user_id", user.id as any);
       setUserVote(null);
     } else if (userVote) {
-      await supabase.from("votes").update({ vote_type: voteType }).eq("hearing_id", hearingId).eq("user_id", user.id);
+      await supabase.from("votes").update({ vote_type: voteType } as any).eq("hearing_id", hearingId as any).eq("user_id", user.id as any);
       setUserVote(voteType);
     } else {
-      await supabase.from("votes").insert({ hearing_id: hearingId, user_id: user.id, vote_type: voteType });
+      await supabase.from("votes").insert({ hearing_id: hearingId, user_id: user.id, vote_type: voteType } as any);
       setUserVote(voteType);
     }
     fetchVotes();

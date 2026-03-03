@@ -18,16 +18,16 @@ export default function HearingPage() {
     supabase
       .from("hearings")
       .select("*")
-      .eq("status", "live")
+      .eq("status", "live" as any)
       .limit(1)
       .single()
       .then(({ data }) => {
         if (data) {
-          setHearing(data);
-          // Track this hearing as recently viewed
+          const d = data as any;
+          setHearing(d);
           setRecentlyViewed(prev => {
-            const filtered = prev.filter(h => h.id !== data.id);
-            return [{ id: data.id, title: data.title, timestamp: Date.now() }, ...filtered].slice(0, 10);
+            const filtered = prev.filter(h => h.id !== d.id);
+            return [{ id: d.id, title: d.title, timestamp: Date.now() }, ...filtered].slice(0, 10);
           });
         }
       });

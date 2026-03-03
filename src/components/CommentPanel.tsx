@@ -14,7 +14,6 @@ interface Comment {
   hearing_timestamp: string | null;
   upvotes: number | null;
   sentiment: string | null;
-  sentiment_confidence?: number | null;
   profile?: { display_name: string | null };
 }
 
@@ -51,14 +50,11 @@ export default function CommentPanel({ hearingId }: CommentPanelProps) {
   const fetchComments = async () => {
     const { data } = await supabase
       .from("comments")
-      .select("*, profiles:user_id(display_name)")
-      .eq("hearing_id", hearingId)
+      .select("*")
+      .eq("hearing_id", hearingId as any)
       .order("created_at", { ascending: false });
     if (data) {
-      setComments(data.map((c: any) => ({
-        ...c,
-        profile: c.profiles,
-      })));
+      setComments(data as any);
     }
   };
 
@@ -70,15 +66,12 @@ export default function CommentPanel({ hearingId }: CommentPanelProps) {
     }
     setSending(true);
 
-    // Get AI sentiment
     let sentiment = "neutral";
-    let confidence: number | null = null;
     try {
       const { data } = await supabase.functions.invoke("analyze-sentiment", {
         body: { text: newComment, type: "sentiment" },
       });
       if (data?.sentiment) sentiment = data.sentiment;
-      if (typeof data?.confidence === "number") confidence = data.confidence;
     } catch { }
 
     const { error } = await supabase.from("comments").insert({
@@ -86,8 +79,7 @@ export default function CommentPanel({ hearingId }: CommentPanelProps) {
       user_id: user.id,
       text: newComment,
       sentiment,
-      sentiment_confidence: confidence,
-    });
+    } as any);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
@@ -96,7 +88,7 @@ export default function CommentPanel({ hearingId }: CommentPanelProps) {
       delete updated[hearingId];
       setDraftedComments(updated);
       setHasDraft(false);
-      recordComment(); // track the comment in stats
+      recordComment();
       toast({ title: "Comment posted", description: "Your comment has been shared." });
     }
     setSending(false);
@@ -136,10 +128,7 @@ export default function CommentPanel({ hearingId }: CommentPanelProps) {
               <span className="text-sm font-semibold text-foreground">{c.profile?.display_name || "Anonymous"}</span>
               <span className="text-xs text-muted-foreground">{timeAgo(c.created_at)}</span>
               {c.sentiment && (
-                <span
-                  className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold ${sentimentBadge[c.sentiment] || sentimentBadge.neutral}`}
-                  title={c.sentiment_confidence != null ? `Confidence: ${(c.sentiment_confidence * 100).toFixed(0)}%` : undefined}
-                >
+                <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold ${sentimentBadge[c.sentiment] || sentimentBadge.neutral}`}>
                   {c.sentiment}
                 </span>
               )}
