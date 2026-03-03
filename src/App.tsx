@@ -24,6 +24,16 @@ const queryClient = new QueryClient({
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
+// suppress noisy React Router future-flag warnings in console
+const originalWarn = console.warn.bind(console);
+console.warn = (...args: any[]) => {
+  const msg = args[0] && args[0].toString();
+  if (msg && msg.includes("React Router Future Flag Warning")) {
+    return; // ignore
+  }
+  originalWarn(...args);
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>

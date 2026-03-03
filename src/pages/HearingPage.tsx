@@ -6,11 +6,13 @@ import CaptionSummary from "@/components/CaptionSummary";
 import { Radio, Users, Clock, Download } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 
 const MOCK_TRANSCRIPT_TEXT = `Good morning. We're convening today to discuss the proposed Clean Air Amendment Act. Our research shows a 23% reduction in particulate matter is achievable within 5 years. The health benefits alone would save an estimated $4.2 billion annually. What about the economic impact on small manufacturers? We recommend a phased implementation with tax incentives for small businesses. While we support cleaner air goals, the timeline is unrealistic. Our members need at minimum 8 years.`;
 
 export default function HearingPage() {
   const [hearing, setHearing] = useState<any>(null);
+  const [recentlyViewed, setRecentlyViewed] = useLocalStorage<Array<{ id: string; title: string; timestamp: number }>>("app:recently-viewed-hearings", []);
 
   useEffect(() => {
     supabase
@@ -19,7 +21,16 @@ export default function HearingPage() {
       .eq("status", "live")
       .limit(1)
       .single()
-      .then(({ data }) => { if (data) setHearing(data); });
+      .then(({ data }) => {
+        if (data) {
+          setHearing(data);
+          // Track this hearing as recently viewed
+          setRecentlyViewed(prev => {
+            const filtered = prev.filter(h => h.id !== data.id);
+            return [{ id: data.id, title: data.title, timestamp: Date.now() }, ...filtered].slice(0, 10);
+          });
+        }
+      });
   }, []);
 
   const hearingId = hearing?.id || "";

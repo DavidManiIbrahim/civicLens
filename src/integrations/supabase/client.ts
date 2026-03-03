@@ -8,10 +8,26 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// custom fetch wrapper that will log once per endpoint failure
+const fetchFailures = new Set<string>();
+const customFetch: typeof fetch = async (input, init) => {
+  try {
+    return await fetch(input, init);
+  } catch (err: any) {
+    const key = typeof input === 'string' ? input : input.url;
+    if (!fetchFailures.has(key)) {
+      console.warn("Supabase network request failed:", err);
+      fetchFailures.add(key);
+    }
+    throw err; // let callers handle
+  }
+};
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  fetch: customFetch,
   auth: {
     storage: localStorage,
     persistSession: true,
-    autoRefreshToken: true,
+    autoRefreshToken: false, // disable automatic refresh to avoid spamming network when offline
   }
 });

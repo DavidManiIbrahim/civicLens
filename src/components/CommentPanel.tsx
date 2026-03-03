@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { ThumbsUp, MessageSquare, Send, User } from "lucide-react";
+import { ThumbsUp, MessageSquare, Send, User, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useAppStats } from "@/hooks/useAppStats";
 
 interface Comment {
   id: string;
@@ -24,10 +26,16 @@ export default function CommentPanel({ hearingId }: CommentPanelProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState("");
+  const [draftedComments, setDraftedComments] = useLocalStorage<Record<string, string>>("app:comment-drafts", {});
+  const [newComment, setNewComment] = useState(draftedComments[hearingId] || "");
   const [sending, setSending] = useState(false);
+  const [hasDraft, setHasDraft] = useState(!!draftedComments[hearingId]);
+  const { recordComment } = useAppStats();
 
   useEffect(() => {
+    setNewComment(draftedComments[hearingId] || "");
+    setHasDraft(!!draftedComments[hearingId]);
+    
     fetchComments();
 
     const channel = supabase
@@ -38,7 +46,7 @@ export default function CommentPanel({ hearingId }: CommentPanelProps) {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [hearingId]);
+  }, [hearingId, draftedComments]);
 
   const fetchComments = async () => {
     const { data } = await supabase
@@ -84,6 +92,12 @@ export default function CommentPanel({ hearingId }: CommentPanelProps) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       setNewComment("");
+      const updated = { ...draftedComments };
+      delete updated[hearingId];
+      setDraftedComments(updated);
+      setHasDraft(false);
+      recordComment(); // track the comment in stats
+      toast({ title: "Comment posted", description: "Your comment has been shared." });
     }
     setSending(false);
   };
@@ -147,12 +161,29 @@ export default function CommentPanel({ hearingId }: CommentPanelProps) {
         ))}
       </div>
 
-      <div className="border-t border-border p-4">
+      <div className="border-t border-border p-4 space-y-2">
+        {hasDraft && (
+          <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+            <AlertCircle className="h-3 w-3" />
+            <span>Draft saved. Continue where you left off.</span>
+          </div>
+        )}
         <div className="flex gap-2">
           <input
             type="text"
             value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setNewComment(val);
+              const updated = { ...draftedComments };
+              if (val.trim()) {
+                updated[hearingId] = val;
+              } else {
+                delete updated[hearingId];
+              }
+              setDraftedComments(updated);
+              setHasDraft(!!updated[hearingId]);
+            }}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder={user ? "Share your thoughts..." : "Sign in to comment..."}
             disabled={!user || sending}
