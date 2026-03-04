@@ -34,12 +34,24 @@ export default function HearingPage() {
 
   const getEmbedUrl = (url: string) => {
     if (!url) return "";
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = url.match(regExp);
-    if (match && match[2].length === 11) {
-      return `https://www.youtube.com/embed/${match[2]}`;
+
+    // First, normalize m.youtube.com to youtube.com
+    let normalizedUrl = url.replace("m.youtube.com", "youtube.com");
+
+    // Standard ID extraction for various youtube formats
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|live\/)([^#\&\?]*).*/;
+    const match = normalizedUrl.match(regExp);
+
+    if (match && match[2].trim().length === 11) {
+      return `https://www.youtube.com/embed/${match[2].trim()}`;
     }
-    return url;
+
+    // Fallback for cases where it's already an embed link but might have extra params
+    if (normalizedUrl.includes("youtube.com/embed/")) {
+      return normalizedUrl;
+    }
+
+    return normalizedUrl;
   };
 
   const hearingId = hearing?.id || "";
