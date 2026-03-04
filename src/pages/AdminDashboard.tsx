@@ -355,7 +355,7 @@ export default function AdminDashboard() {
                                             </thead>
                                             <tbody className="divide-y divide-border">
                                                 {users
-                                                    .filter(u => u.display_name.toLowerCase().includes(searchQuery.toLowerCase()))
+                                                    .filter(u => (u.display_name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (u.email || '').toLowerCase().includes(searchQuery.toLowerCase()))
                                                     .map(u => {
                                                         const userComments = comments.filter(c => c.user_id === u.user_id);
                                                         const totalComments = userComments.length;
@@ -374,7 +374,7 @@ export default function AdminDashboard() {
                                                                 <span>{u.display_name}</span>
                                                             </td>
                                                             <td className="px-6 py-4 text-xs text-muted-foreground">
-                                                                {"-"}
+                                                                {u.email || "-"}
                                                             </td>
                                                             <td className="px-6 py-4">
                                                                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${u.role === 'admin' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
