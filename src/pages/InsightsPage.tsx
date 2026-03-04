@@ -47,77 +47,21 @@ export default function InsightsPage() {
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">Legislative Insights</h1>
             <p className="mt-1 text-muted-foreground">
-              AI-generated briefing for policymakers on the Clean Air Amendment Act.
+              AI-generated briefing for policymakers.
             </p>
           </div>
-          <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105">
-            <Download className="h-4 w-4" />
-            Export Briefing
-          </button>
         </div>
 
-        {/* Executive Summary */}
-        <div className="mb-8 rounded-xl border border-border bg-card p-6 shadow-card">
-          <div className="mb-3 flex items-center gap-2">
-            <FileText className="h-5 w-5 text-accent" />
-            <h2 className="font-display text-xl font-bold text-foreground">Executive Summary</h2>
+        {/* Placeholder Summary */}
+        <div className="mb-8 rounded-xl border border-border bg-card p-12 shadow-card text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 text-accent">
+            <FileText className="h-8 w-8" />
           </div>
-          <p className="leading-relaxed text-foreground/85">{executiveSummary}</p>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Arguments For */}
-          <div className="rounded-xl border border-border bg-card p-5 shadow-card">
-            <div className="mb-4 flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-success" />
-              <h3 className="font-display text-lg font-bold text-foreground">Arguments For</h3>
-            </div>
-            <div className="space-y-2">
-              {keyArguments.forBill.map((arg, i) => (
-                <div key={i} className="flex items-start gap-3 rounded-lg bg-success/5 p-3">
-                  <TrendingUp className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-                  <p className="text-sm text-foreground">{arg}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Arguments Against */}
-          <div className="rounded-xl border border-border bg-card p-5 shadow-card">
-            <div className="mb-4 flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-destructive" />
-              <h3 className="font-display text-lg font-bold text-foreground">Arguments Against</h3>
-            </div>
-            <div className="space-y-2">
-              {keyArguments.againstBill.map((arg, i) => (
-                <div key={i} className="flex items-start gap-3 rounded-lg bg-destructive/5 p-3">
-                  <TrendingDown className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                  <p className="text-sm text-foreground">{arg}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Risk Indicators */}
-          <div className="rounded-xl border border-border bg-card p-5 shadow-card lg:col-span-2">
-            <div className="mb-4 flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-warning" />
-              <h3 className="font-display text-lg font-bold text-foreground">Risk Indicators</h3>
-            </div>
-            <div className="space-y-3">
-              {riskIndicators.map((r, i) => (
-                <div key={i} className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold uppercase ${riskColors[r.risk as keyof typeof riskColors]}`}>
-                      {r.risk}
-                    </span>
-                    <span className="font-medium text-foreground">{r.topic}</span>
-                  </div>
-                  <span className="text-sm text-muted-foreground">{r.detail}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <h2 className="font-display text-2xl font-bold text-foreground">AI Insights Pipeline</h2>
+          <p className="mx-auto mt-2 max-w-sm text-muted-foreground">
+            Our AI engine is currently collecting data from live hearings and citizen participation.
+            Deep legislative insights and risk monitoring will appear here as more sessions are processed.
+          </p>
         </div>
       </div>
     </Layout>

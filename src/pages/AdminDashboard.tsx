@@ -12,13 +12,25 @@ import {
     LayoutDashboard,
     FileText,
     Shield,
+    ShieldAlert,
+    ShieldX,
+    Pencil,
+    RefreshCw,
     Bell,
     BarChart3,
     ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
 import HearingForm from "@/components/admin/HearingForm";
 import AnnouncementForm from "@/components/admin/AnnouncementForm";
 import SentimentCharts from "@/components/SentimentCharts";
@@ -34,7 +46,7 @@ import {
     useRecalculateSentimentMutation,
 } from "@/hooks/useData";
 
-type Tab = "overview" | "hearings" | "users" | "announcements" | "analytics" | "settings";
+type Tab = "overview" | "hearings" | "users" | "announcements" | "analytics";
 
 
 import AdminAuth from "@/components/admin/AdminAuth";
@@ -45,6 +57,8 @@ export default function AdminDashboard() {
     const [isAddingHearing, setIsAddingHearing] = useState(false);
     const [isAddingAnnouncement, setIsAddingAnnouncement] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [editingUser, setEditingUser] = useState<any>(null);
+    const [editNameField, setEditNameField] = useState("");
     const { toast } = useToast();
 
     // Queries
@@ -62,8 +76,8 @@ export default function AdminDashboard() {
     const deleteProfileMutation = useDeleteProfileMutation();
     const recalcSentimentMutation = useRecalculateSentimentMutation();
     // Announcement mutations placeholder (table not yet created)
-    const updateAnnouncementMutation = { mutate: (_a: any, _b?: any) => {} } as any;
-    const deleteAnnouncementMutation = { mutate: (_a: any, _b?: any) => {} } as any;
+    const updateAnnouncementMutation = { mutate: (_a: any, _b?: any) => { } } as any;
+    const deleteAnnouncementMutation = { mutate: (_a: any, _b?: any) => { } } as any;
 
     const updateHearingStatus = async (hearingId: string, newStatus: string) => {
         updateHearingStatusMutation.mutate({ id: hearingId, status: newStatus }, {
@@ -121,7 +135,6 @@ export default function AdminDashboard() {
         { id: "users", label: "Users", icon: Users },
         { id: "announcements", label: "Posts", icon: Bell },
         { id: "analytics", label: "Analytics", icon: BarChart3 },
-        { id: "settings", label: "Settings", icon: Settings },
     ];
 
     return (
@@ -228,8 +241,8 @@ export default function AdminDashboard() {
                                             <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-success/10 text-success">
                                                 <TrendingUp className="h-5 w-5" />
                                             </div>
-                                            <div className="text-sm font-medium text-muted-foreground">Platform Health</div>
-                                            <div className="mt-1 text-3xl font-bold">94%</div>
+                                            <div className="text-sm font-medium text-muted-foreground">Total Comments</div>
+                                            <div className="mt-1 text-3xl font-bold">{comments.length}</div>
                                         </div>
                                     </div>
 
@@ -366,77 +379,98 @@ export default function AdminDashboard() {
                                                         const negPct = totalComments ? Math.round((neg / totalComments) * 100) : 0;
                                                         const neuPct = totalComments ? Math.round((neu / totalComments) * 100) : 0;
                                                         return (
-                                                        <tr key={u.id} className="transition-colors hover:bg-muted/30">
-                                                            <td className="px-6 py-4 flex items-center gap-3">
-                                                                <div className="h-8 w-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-[10px] font-bold">
-                                                                    {u.display_name.slice(0, 2).toUpperCase()}
-                                                                </div>
-                                                                <span>{u.display_name}</span>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-xs text-muted-foreground">
-                                                                {u.email || "-"}
-                                                            </td>
-                                                            <td className="px-6 py-4">
-                                                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${u.role === 'admin' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                                                                    }`}>
-                                                                    {u.role}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-xs">
+                                                            <tr key={u.id} className="transition-colors hover:bg-muted/30">
+                                                                <td className="px-6 py-4 flex items-center gap-3">
+                                                                    <div className="h-8 w-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-[10px] font-bold">
+                                                                        {u.display_name.slice(0, 2).toUpperCase()}
+                                                                    </div>
+                                                                    <span>{u.display_name}</span>
+                                                                </td>
+                                                                <td className="px-6 py-4 text-xs text-muted-foreground">
+                                                                    {u.email || "-"}
+                                                                </td>
+                                                                <td className="px-6 py-4">
+                                                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${u.role === 'admin' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                                                                        }`}>
+                                                                        {u.role}
+                                                                    </span>
+                                                                </td>
+                                                                {/* <td className="px-6 py-4 text-xs"> */}
                                                                 {/* {totalComments} ({posPct}%+ / {negPct}%- / {neuPct}%0) */}
-                                                            </td>
-                                                            <td className="px-6 py-4 text-muted-foreground text-xs">
-                                                                {new Date(u.created_at).toLocaleString()}
-                                                            </td>
-                                                            <td className="px-6 py-4 text-right space-x-1">
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={() => {
-                                                                        const name = prompt("Enter new display name", u.display_name);
-                                                                        if (name && name !== u.display_name) {
-                                                                            updateProfileMutation.mutate({ userId: u.user_id, display_name: name }, {
-                                                                                onSuccess: () => toast({ title: "Name updated" }),
-                                                                                onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
-                                                                            });
-                                                                        }
-                                                                    }}
-                                                                    className="h-8 text-xs"
-                                                                >
-                                                                    Edit
-                                                                </Button>
-                                                                {totalComments > 0 && (
+                                                                {/* </td> */}
+                                                                <td className="px-6 py-4 text-muted-foreground text-xs">
+                                                                    {new Date(u.created_at).toLocaleString()}
+                                                                </td>
+                                                                <td className="px-6 py-4 text-right space-x-1">
                                                                     <Button
                                                                         variant="outline"
-                                                                        size="sm"
-                                                                        onClick={() => recalcSentimentMutation.mutate(u.user_id, {
-                                                                            onSuccess: () => toast({ title: "Sentiment refreshed" }),
-                                                                            onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
-                                                                        })}
-                                                                        className="h-8 text-xs"
+                                                                        size="icon"
+                                                                        onClick={() => {
+                                                                            setEditingUser(u);
+                                                                            setEditNameField(u.display_name || "");
+                                                                        }}
+                                                                        className="h-8 w-8"
+                                                                        title="Edit Profile"
                                                                     >
-                                                                        Re‑analyze
+                                                                        <Pencil className="h-3.5 w-3.5" />
                                                                     </Button>
-                                                                )}
-                                                                {u.role !== 'admin' && (
-                                                                    <Button variant="outline" size="sm" onClick={() => updateRole(u.user_id, 'admin')} className="h-8 text-xs">
-                                                                        Promote
+                                                                    {totalComments > 0 && (
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="icon"
+                                                                            onClick={() => recalcSentimentMutation.mutate(u.user_id, {
+                                                                                onSuccess: () => toast({ title: "Sentiment refreshed" }),
+                                                                                onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+                                                                            })}
+                                                                            className="h-8 w-8"
+                                                                            title="Re-analyze Sentiment"
+                                                                        >
+                                                                            <RefreshCw className="h-3.5 w-3.5" />
+                                                                        </Button>
+                                                                    )}
+                                                                    {u.role !== 'admin' ? (
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="icon"
+                                                                            onClick={() => updateRole(u.user_id, 'admin')}
+                                                                            className="h-8 w-8 text-primary"
+                                                                            title="Promote to Admin"
+                                                                        >
+                                                                            <ShieldAlert className="h-3.5 w-3.5" />
+                                                                        </Button>
+                                                                    ) : (
+                                                                        u.user_id !== user?.id && (
+                                                                            <Button
+                                                                                variant="outline"
+                                                                                size="icon"
+                                                                                onClick={() => updateRole(u.user_id, 'user')}
+                                                                                className="h-8 w-8 text-warning"
+                                                                                title="Demote to User"
+                                                                            >
+                                                                                <ShieldX className="h-3.5 w-3.5" />
+                                                                            </Button>
+                                                                        )
+                                                                    )}
+                                                                    <Button
+                                                                        variant="destructive"
+                                                                        size="icon"
+                                                                        onClick={() => {
+                                                                            if (window.confirm("Are you sure you want to delete this user?")) {
+                                                                                deleteProfileMutation.mutate(u.user_id, {
+                                                                                    onSuccess: () => toast({ title: "User removed" }),
+                                                                                    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+                                                                                });
+                                                                            }
+                                                                        }}
+                                                                        className="h-8 w-8"
+                                                                        title="Delete User"
+                                                                    >
+                                                                        <Trash className="h-3.5 w-3.5" />
                                                                     </Button>
-                                                                )}
-                                                                <Button
-                                                                    variant="destructive"
-                                                                    size="sm"
-                                                                    onClick={() => deleteProfileMutation.mutate(u.user_id, {
-                                                                        onSuccess: () => toast({ title: "User removed" }),
-                                                                        onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
-                                                                    })}
-                                                                    className="h-8 text-xs"
-                                                                >
-                                                                    Delete
-                                                                </Button>
-                                                            </td>
-                                                        </tr>
-                                                    )})}
+                                                                </td>
+                                                            </tr>
+                                                        )
+                                                    })}
                                             </tbody>
                                         </table>
                                     </div>
@@ -487,48 +521,23 @@ export default function AdminDashboard() {
                                 <div className="space-y-6">
                                     <div className="grid gap-4 md:grid-cols-4">
                                         <div className="rounded-lg border border-border bg-card p-4">
-                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Comment Intensity</p>
-                                            <p className="text-2xl font-bold mt-1">4.2/min</p>
+                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Comments</p>
+                                            <p className="text-2xl font-bold mt-1">{comments.length}</p>
                                         </div>
                                         <div className="rounded-lg border border-border bg-card p-4">
-                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Avg Vote Delta</p>
-                                            <p className="text-2xl font-bold mt-1">+12.4</p>
+                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Positive Sentiment</p>
+                                            <p className="text-2xl font-bold mt-1 text-success">{comments.filter(c => c.sentiment === 'positive').length}</p>
                                         </div>
                                         <div className="rounded-lg border border-border bg-card p-4">
-                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Sentiment Bias</p>
-                                            <p className="text-2xl font-bold mt-1 text-success">Positive</p>
+                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Negative Sentiment</p>
+                                            <p className="text-2xl font-bold mt-1 text-destructive">{comments.filter(c => c.sentiment === 'negative').length}</p>
                                         </div>
                                         <div className="rounded-lg border border-border bg-card p-4">
-                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Region Hotspot</p>
-                                            <p className="text-2xl font-bold mt-1">Lagos Central</p>
+                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Registered Citizens</p>
+                                            <p className="text-2xl font-bold mt-1">{users.length}</p>
                                         </div>
                                     </div>
                                     <SentimentCharts />
-                                </div>
-                            )}
-
-                            {activeTab === "settings" && (
-                                <div className="max-w-2xl rounded-xl border border-border bg-card p-8 shadow-card">
-                                    <h3 className="text-lg font-bold mb-4">Platform Configuration</h3>
-                                    <div className="space-y-6">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="font-medium">Public Participation</p>
-                                                <p className="text-sm text-muted-foreground">Allow non-verified users to comment on hearings.</p>
-                                            </div>
-                                            <div className="h-5 w-10 rounded-full bg-accent p-0.5"><div className="h-4 w-4 rounded-full bg-white translate-x-5" /></div>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="font-medium">AI Sentiment Analysis</p>
-                                                <p className="text-sm text-muted-foreground">Automatically process public comments using Gemini.</p>
-                                            </div>
-                                            <div className="h-5 w-10 rounded-full bg-accent p-0.5"><div className="h-4 w-4 rounded-full bg-white translate-x-5" /></div>
-                                        </div>
-                                        <div className="pt-4 border-t border-border">
-                                            <Button variant="destructive" className="w-full">Maintenance Mode</Button>
-                                        </div>
-                                    </div>
                                 </div>
                             )}
                         </>
@@ -549,6 +558,46 @@ export default function AdminDashboard() {
                     onSuccess={() => { setIsAddingAnnouncement(false); toast({ title: "Post created" }); }}
                 />
             )}
+
+            <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Edit User Profile</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="editName">Display Name</Label>
+                            <Input
+                                id="editName"
+                                value={editNameField}
+                                onChange={(e) => setEditNameField(e.target.value)}
+                                placeholder="Public display name"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">User ID: {editingUser?.user_id}</p>
+                            <p className="text-xs text-muted-foreground">Email: {editingUser?.email}</p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
+                        <Button
+                            onClick={() => {
+                                updateProfileMutation.mutate({ userId: editingUser.user_id, display_name: editNameField }, {
+                                    onSuccess: () => {
+                                        toast({ title: "Profile updated" });
+                                        setEditingUser(null);
+                                    },
+                                    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+                                });
+                            }}
+                            disabled={updateProfileMutation.isPending}
+                        >
+                            {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Layout>
     );
 }

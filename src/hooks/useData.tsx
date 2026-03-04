@@ -140,6 +140,23 @@ export function useDeleteProfileMutation() {
     });
 }
 
+export function useTranscripts(hearingId?: string) {
+    return useQuery({
+        queryKey: ["transcripts", hearingId],
+        queryFn: async () => {
+            if (!hearingId) return [];
+            const { data, error } = await supabase
+                .from("transcript_entries")
+                .select("*")
+                .eq("hearing_id", hearingId as any)
+                .order("created_at", { ascending: true });
+            if (error) throw error;
+            return data as any[];
+        },
+        enabled: !!hearingId,
+    });
+}
+
 export function useRecalculateSentimentMutation() {
     const queryClient = useQueryClient();
     return useMutation({

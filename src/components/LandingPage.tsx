@@ -1,9 +1,13 @@
 import { Link } from "react-router-dom";
 import { Radio, Users, MessageSquare, TrendingUp, ArrowRight, Shield, Globe, Zap } from "lucide-react";
+import { useHearings, useProfiles, useComments } from "@/hooks/useData";
 // import heroImage from "/images/PARLIAMENT-4-1-678x381.jpg";
 import BgImage from "/images/image.png";
 
 export default function LandingPage() {
+  const { data: hearings = [] } = useHearings();
+  const { data: users = [] } = useProfiles();
+  const { data: comments = [] } = useComments();
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
@@ -84,16 +88,16 @@ export default function LandingPage() {
       <section className="bg-primary py-20 text-primary-foreground">
         <div className="container grid gap-12 text-center md:grid-cols-4">
           <div>
-            <div className="text-4xl font-black md:text-5xl">500+</div>
+            <div className="text-4xl font-black md:text-5xl">{hearings.length}+</div>
             <div className="mt-2 text-primary-foreground/60 uppercase tracking-widest text-xs font-bold">Hearings Tracked</div>
           </div>
           <div>
-            <div className="text-4xl font-black md:text-5xl">1.2M</div>
+            <div className="text-4xl font-black md:text-5xl">{users.length}</div>
             <div className="mt-2 text-primary-foreground/60 uppercase tracking-widest text-xs font-bold">Citizens Engaged</div>
           </div>
           <div>
-            <div className="text-4xl font-black md:text-5xl">98%</div>
-            <div className="mt-2 text-primary-foreground/60 uppercase tracking-widest text-xs font-bold">AI Accuracy</div>
+            <div className="text-4xl font-black md:text-5xl">{comments.length}</div>
+            <div className="mt-2 text-primary-foreground/60 uppercase tracking-widest text-xs font-bold">Comments Analyzed</div>
           </div>
           <div>
             <div className="text-4xl font-black md:text-5xl">24/7</div>

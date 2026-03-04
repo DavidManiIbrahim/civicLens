@@ -8,7 +8,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 
-const MOCK_TRANSCRIPT_TEXT = `Good morning. We're convening today to discuss the proposed Clean Air Amendment Act. Our research shows a 23% reduction in particulate matter is achievable within 5 years. The health benefits alone would save an estimated $4.2 billion annually. What about the economic impact on small manufacturers? We recommend a phased implementation with tax incentives for small businesses. While we support cleaner air goals, the timeline is unrealistic. Our members need at minimum 8 years.`;
 
 export default function HearingPage() {
   const [hearing, setHearing] = useState<any>(null);
@@ -33,6 +32,16 @@ export default function HearingPage() {
       });
   }, []);
 
+  const getEmbedUrl = (url: string) => {
+    if (!url) return "";
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    if (match && match[2].length === 11) {
+      return `https://www.youtube.com/embed/${match[2]}`;
+    }
+    return url;
+  };
+
   const hearingId = hearing?.id || "";
 
   return (
@@ -51,16 +60,16 @@ export default function HearingPage() {
             <span className="text-sm text-muted-foreground">{hearing?.committee || "Environment & Public Works Committee"}</span>
           </div>
           <h1 className="font-display text-2xl font-bold text-foreground md:text-3xl">
-            {hearing?.title || "Clean Air Amendment Act - Environmental Impact Review"}
+            {hearing?.title || "Hearing in Progress"}
           </h1>
           <div className="mt-2 flex items-center gap-6 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Users className="h-4 w-4" />
-              {hearing?.viewers?.toLocaleString() || "12,847"} watching
+              {hearing?.viewers?.toLocaleString() || "0"} watching
             </span>
             <span className="flex items-center gap-1.5">
               <Clock className="h-4 w-4" />
-              Started 1h 45m ago
+              Started recently
             </span>
             <button className="flex items-center gap-1.5 text-accent hover:underline">
               <Download className="h-4 w-4" />
@@ -77,7 +86,7 @@ export default function HearingPage() {
             <div className="aspect-video overflow-hidden rounded-xl bg-primary">
               {hearing?.stream_url ? (
                 <iframe
-                  src={hearing.stream_url}
+                  src={getEmbedUrl(hearing.stream_url)}
                   className="h-full w-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -95,14 +104,14 @@ export default function HearingPage() {
             </div>
 
             {/* Caption Summary */}
-            <CaptionSummary transcriptText={MOCK_TRANSCRIPT_TEXT} />
+            <CaptionSummary transcriptText={hearing?.transcript || ""} />
 
             {/* Vote */}
             {hearingId && <VotePanel hearingId={hearingId} />}
 
             {/* Transcript - Boxed with internal scroll */}
             <div className="h-[400px] lg:h-[600px] overflow-hidden rounded-xl border border-border">
-              <TranscriptPanel />
+              <TranscriptPanel hearingId={hearingId} />
             </div>
           </div>
 

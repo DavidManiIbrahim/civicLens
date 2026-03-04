@@ -6,13 +6,14 @@ import { Radio, Users, MessageSquare, TrendingUp, ArrowRight } from "lucide-reac
 import { Link } from "react-router-dom";
 import heroImage from "/images/PARLIAMENT-4-1-678x381.jpg";
 import { supabase } from "@/integrations/supabase/client";
-import { useHearings } from "@/hooks/useData";
+import { useHearings, useComments } from "@/hooks/useData";
 import { useAuth } from "@/hooks/useAuth";
 import LandingPage from "@/components/LandingPage";
 
 export default function Index() {
   const { user, loading } = useAuth();
   const { data: hearings = [] } = useHearings();
+  const { data: comments = [] } = useComments();
   const announcements: any[] = [];
 
   if (loading && !user) {
@@ -58,8 +59,8 @@ export default function Index() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatsCard icon={<Radio className="h-5 w-5" />} label="Live Sessions" value={String(liveCount)} />
           <StatsCard icon={<Users className="h-5 w-5" />} label="Total Viewers" value={totalViewers.toLocaleString()} />
-          <StatsCard icon={<MessageSquare className="h-5 w-5" />} label="Hearings" value={String(hearings.length)} />
-          <StatsCard icon={<TrendingUp className="h-5 w-5" />} label="Engagement Rate" value="78%" change="+5% this month" positive />
+          <StatsCard icon={<MessageSquare className="h-5 w-5" />} label="Total Hearings" value={String(hearings.length)} />
+          <StatsCard icon={<TrendingUp className="h-5 w-5" />} label="Total Comments" value={String(comments.length)} />
         </div>
       </section>
 
