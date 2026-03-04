@@ -61,13 +61,29 @@ export default function CommentPanel({ hearingId }: CommentPanelProps) {
   }, [hearingId]);
 
   const fetchComments = async () => {
-    const { data } = await supabase
+    // 1. Fetch comments first
+    const { data: commentsData, error } = await supabase
       .from("comments")
-      .select("*, profile:profiles(display_name)")
+      .select("*")
       .eq("hearing_id", hearingId as any)
       .order("created_at", { ascending: false });
-    if (data) {
-      const formatted = data as any[];
+
+    if (commentsData) {
+      // 2. Batch fetch and map names to avoid complicated joins that can fail
+      const uniqueUserIds = [...new Set((commentsData as any[]).map(c => c.user_id))];
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("user_id, display_name")
+        .in("user_id", uniqueUserIds as any[]);
+
+      const profileMap: Record<string, string> = {};
+      profilesData?.forEach(p => { profileMap[p.user_id] = p.display_name; });
+
+      const formatted = (commentsData as any[]).map(c => ({
+        ...c,
+        profile: { display_name: profileMap[c.user_id] || "Anonymous" }
+      }));
+
       setComments(formatted);
       setCommentCache(prev => ({ ...prev, [hearingId]: formatted }));
     }
@@ -143,6 +159,44 @@ export default function CommentPanel({ hearingId }: CommentPanelProps) {
     negative: "bg-destructive/10 text-destructive",
   };
 
+  const [likedComments, setLikedComments] = useLocalStorage<string[]>("app:liked-comments", []);
+
+  const handleLike = async (commentId: string) => {
+    if (!user) {
+      toast({ title: "Sign in required", description: "Please sign in to like comments.", variant: "destructive" });
+      return;
+    }
+
+    const isLiked = likedComments.includes(commentId);
+    if (isLiked) return; // For now, only allow one like per comment per device
+
+    // Optimistic Update
+    setComments(prev => prev.map(c =>
+      c.id === commentId ? { ...c, upvotes: (c.upvotes || 0) + 1 } : c
+    ));
+    setLikedComments(prev => [...prev, commentId]);
+
+    const { error } = await supabase.rpc("increment_comment_upvotes", { comment_id: commentId });
+
+    if (error) {
+      // If RPC fails (e.g. not created yet), fallback to manual update
+      const commentToUpdate = comments.find(c => c.id === commentId);
+      const { error: updateError } = await supabase
+        .from("comments")
+        .update({ upvotes: (commentToUpdate?.upvotes || 0) + 1 } as any)
+        .eq("id", commentId as any);
+
+      if (updateError) {
+        // Revert on serious error
+        setComments(prev => prev.map(c =>
+          c.id === commentId ? { ...c, upvotes: (c.upvotes || 0) - 1 } : c
+        ));
+        setLikedComments(prev => prev.filter(id => id !== commentId));
+        toast({ title: "Error", description: "Could not like comment.", variant: "destructive" });
+      }
+    }
+  };
+
   const timeAgo = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
@@ -184,10 +238,16 @@ export default function CommentPanel({ hearingId }: CommentPanelProps) {
                   @{c.hearing_timestamp}
                 </span>
               )}
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <ThumbsUp className="h-3 w-3" />
+              <button
+                onClick={() => handleLike(c.id)}
+                className={`flex items-center gap-1 text-xs transition-colors ${likedComments.includes(c.id)
+                  ? "text-accent font-bold"
+                  : "text-muted-foreground hover:text-accent"
+                  }`}
+              >
+                <ThumbsUp className={`h-3 w-3 ${likedComments.includes(c.id) ? "fill-current" : ""}`} />
                 {c.upvotes || 0}
-              </span>
+              </button>
             </div>
           </div>
         ))}

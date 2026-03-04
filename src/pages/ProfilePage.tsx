@@ -78,9 +78,13 @@ export default function ProfilePage() {
                             ) : (
                                 profile?.display_name?.slice(0, 1).toUpperCase() || user.email?.slice(0, 1).toUpperCase()
                             )}
+                            {/* Always visible helper icon in corner */}
+                            <div className="absolute bottom-1 right-1 rounded-full bg-primary p-1 text-white shadow-sm ring-2 ring-card group-hover:scale-110 transition-transform">
+                                <Camera className="h-3 w-3" />
+                            </div>
                             {/* Overlay Camera Icon on Hover */}
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Camera className="h-8 w-8 text-white" />
+                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Camera className="h-8 w-8 text-white drop-shadow-md" />
                             </div>
                         </div>
                         <input
@@ -157,15 +161,7 @@ export default function ProfilePage() {
                                     placeholder="Your display name"
                                 />
                             </div>
-                            <div className="bg-muted/30 p-4 rounded-lg border border-border flex items-center justify-between">
-                                <span className="text-sm text-muted-foreground flex items-center gap-2">
-                                    <Camera className="h-4 w-4" />
-                                    Avatar chosen from device
-                                </span>
-                                <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById("avatar-input")?.click()}>
-                                    Change Image
-                                </Button>
-                            </div>
+
                             <div className="space-y-2">
                                 <Label htmlFor="email">Email Address</Label>
                                 <div className="relative">

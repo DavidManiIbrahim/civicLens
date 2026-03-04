@@ -50,7 +50,7 @@ type Tab = "overview" | "hearings" | "users" | "announcements" | "analytics";
 
 
 import AdminAuth from "@/components/admin/AdminAuth";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useEffect } from "react";
 
 export default function AdminDashboard() {
@@ -65,38 +65,25 @@ export default function AdminDashboard() {
     const { toast } = useToast();
 
     // Caching
-    const [cachedHearings, setCachedHearings] = useLocalStorage<any[]>("admin:hearings", []);
-    const [cachedUsers, setCachedUsers] = useLocalStorage<any[]>("admin:users", []);
-    const [cachedComments, setCachedComments] = useLocalStorage<any[]>("admin:comments", []);
+    const [hearings, setHearings] = useLocalStorage<any[]>("admin:hearings", []);
+    const [users, setUsers] = useLocalStorage<any[]>("admin:users", []);
+    const [comments, setComments] = useLocalStorage<any[]>("admin:comments", []);
 
     // Queries
-    const { data: hearingsData = [], isLoading: loadingHearings } = useHearings();
-    const { data: usersData = [], isLoading: loadingProfiles } = useProfiles();
-    const { data: commentsData = [] } = useComments();
-
-    const [hearings, setHearings] = useState<any[]>(cachedHearings);
-    const [users, setUsers] = useState<any[]>(cachedUsers);
-    const [comments, setComments] = useState<any[]>(cachedComments);
+    const { data: hearingsData, isLoading: loadingHearings } = useHearings();
+    const { data: usersData, isLoading: loadingProfiles } = useProfiles();
+    const { data: commentsData } = useComments();
 
     useEffect(() => {
-        if (hearingsData.length > 0) {
-            setHearings(hearingsData);
-            setCachedHearings(hearingsData);
-        }
+        if (hearingsData && hearingsData.length > 0) setHearings(hearingsData);
     }, [hearingsData]);
 
     useEffect(() => {
-        if (usersData.length > 0) {
-            setUsers(usersData);
-            setCachedUsers(usersData);
-        }
+        if (usersData && usersData.length > 0) setUsers(usersData);
     }, [usersData]);
 
     useEffect(() => {
-        if (commentsData.length > 0) {
-            setComments(commentsData);
-            setCachedComments(commentsData);
-        }
+        if (commentsData && commentsData.length > 0) setComments(commentsData);
     }, [commentsData]);
 
     const announcements: any[] = [];

@@ -1,17 +1,10 @@
 import Layout from "@/components/Layout";
 import TopicCloud from "@/components/TopicCloud";
 import StatsCard from "@/components/StatsCard";
-import { TrendingUp, AlertTriangle, CheckCircle, Users, MessageSquare, Lightbulb } from "lucide-react";
-import { useProfiles, useComments } from "@/hooks/useData";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { TrendingUp, AlertTriangle, CheckCircle, Users, MessageSquare, Lightbulb, Radio } from "lucide-react";
+import { useProfiles, useComments, useHearings } from "../hooks/useData";
+import { useLocalStorage } from "../hooks/useLocalStorage";
+import { useEffect, useState } from "react";
 
 const sentimentBadge = {
   positive: "bg-success/10 text-success",
@@ -19,32 +12,28 @@ const sentimentBadge = {
   negative: "bg-destructive/10 text-destructive",
 };
 
-import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { useEffect, useState } from "react";
-
 export default function PeoplesView() {
-  const [cachedUsers, setCachedUsers] = useLocalStorage<any[]>("app:users-cache", []);
-  const [cachedComments, setCachedComments] = useLocalStorage<any[]>("app:comments-cache", []);
+  const [users, setUsers] = useLocalStorage<any[]>("app:users-cache", []);
+  const [comments, setComments] = useLocalStorage<any[]>("app:comments-cache", []);
+  const [hearings, setHearings] = useLocalStorage<any[]>("app:hearings-cache", []);
 
-  const { data: usersData = [] } = useProfiles();
-  const { data: commentsData = [] } = useComments();
-
-  const [users, setUsers] = useState<any[]>(cachedUsers);
-  const [comments, setComments] = useState<any[]>(cachedComments);
+  const { data: usersData } = useProfiles();
+  const { data: commentsData } = useComments();
+  const { data: hearingsData } = useHearings();
 
   useEffect(() => {
-    if (usersData) {
-      setUsers(usersData);
-      setCachedUsers(usersData);
-    }
+    if (usersData && usersData.length > 0) setUsers(usersData);
   }, [usersData]);
 
   useEffect(() => {
-    if (commentsData) {
-      setComments(commentsData);
-      setCachedComments(commentsData);
-    }
+    if (commentsData && commentsData.length > 0) setComments(commentsData);
   }, [commentsData]);
+
+  useEffect(() => {
+    if (hearingsData && hearingsData.length > 0) setHearings(hearingsData);
+  }, [hearingsData]);
+
+  const totalViewers = (hearings || []).reduce((sum, h) => sum + (h.viewers || 0), 0);
 
   return (
     <Layout>
@@ -57,9 +46,10 @@ export default function PeoplesView() {
         </div>
 
         {/* Stats row */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-3">
+        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatsCard icon={<Users className="h-5 w-5" />} label="Total Participants" value={users.length.toLocaleString()} />
           <StatsCard icon={<MessageSquare className="h-5 w-5" />} label="Comments Analyzed" value={comments.length.toLocaleString()} />
+          <StatsCard icon={<Radio className="h-5 w-5" />} label="Citizens Reached" value={totalViewers.toLocaleString()} />
           <StatsCard icon={<TrendingUp className="h-5 w-5" />} label="Engagement" value={`${comments.length > 0 ? (comments.length / Math.max(users.length, 1)).toFixed(1) : 0} avg`} />
         </div>
 

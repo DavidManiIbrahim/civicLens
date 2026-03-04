@@ -36,6 +36,32 @@ export default function HearingPage() {
     });
   }, [id]);
 
+  const hearingId = id || hearing?.id || "";
+
+  useEffect(() => {
+    if (!hearingId) return;
+
+    // Track views globally for this session
+    const sessionsViews = JSON.parse(sessionStorage.getItem("app:viewed-sessions") || "[]");
+
+    if (!sessionsViews.includes(hearingId)) {
+      // RPC is not found, so use direct update
+      supabase.from("hearings")
+        .select("viewers")
+        .eq("id", hearingId as any)
+        .single()
+        .then(({ data }) => {
+          const current = (data as any)?.viewers || 0;
+          supabase.from("hearings")
+            .update({ viewers: current + 1 } as any)
+            .eq("id", hearingId as any)
+            .then(() => {
+              sessionStorage.setItem("app:viewed-sessions", JSON.stringify([...sessionsViews, hearingId]));
+            });
+        });
+    }
+  }, [hearingId]);
+
   const getEmbedUrl = (url: string) => {
     if (!url) return "";
 
@@ -57,8 +83,6 @@ export default function HearingPage() {
 
     return normalizedUrl;
   };
-
-  const hearingId = id || hearing?.id || "";
 
   return (
     <Layout>
