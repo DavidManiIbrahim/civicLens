@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Radio, Users, MessageSquare, TrendingUp, ArrowRight, Shield, Globe, Zap } from "lucide-react";
-import heroImage from "/images/PARLIAMENT-4-1-678x381.jpg";
+// import heroImage from "/images/PARLIAMENT-4-1-678x381.jpg";
+import BgImage from "/images/image.png";
 
 export default function LandingPage() {
   return (
@@ -8,7 +9,7 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="relative min-h-[90vh] overflow-hidden">
         <div className="absolute inset-0">
-          <img src={heroImage} alt="Capitol building" className="h-full w-full object-cover" />
+          <img src={BgImage} alt="Capitol building" className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-civic opacity-85" />
         </div>
         <div className="container relative flex min-h-[90vh] flex-col items-center justify-center py-20 text-center">

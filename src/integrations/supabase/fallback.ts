@@ -1,4 +1,4 @@
-/**
+`/**
  * Fallback mock data when Supabase is unavailable.
  * Allows the app to function in offline/demo mode.
  */
