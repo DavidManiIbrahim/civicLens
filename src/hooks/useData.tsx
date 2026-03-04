@@ -93,10 +93,9 @@ export function useProfiles() {
     return useQuery({
         queryKey: ["profiles"],
         queryFn: async () => {
-            // join auth.users to get the email address
             const { data, error } = await supabase
                 .from("profiles")
-                .select("*, users(email)")
+                .select("*")
                 .order("created_at", { ascending: false });
             if (error) throw error;
             return data as any[];
