@@ -31,10 +31,10 @@ export function useCreateHearingMutation() {
 export function useUpdateHearingMutation() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ id, status }: { id: string; status: string }) => {
+        mutationFn: async ({ id, ...updates }: { id: string;[key: string]: any }) => {
             const { error } = await supabase
                 .from("hearings")
-                .update({ status } as any)
+                .update(updates as any)
                 .eq("id", id as any);
             if (error) throw error;
         },

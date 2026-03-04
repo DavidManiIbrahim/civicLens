@@ -9,43 +9,56 @@ import { Textarea } from "@/components/ui/textarea";
 interface HearingFormProps {
     onClose: () => void;
     onSuccess: () => void;
+    initialData?: any;
 }
 
-import { useCreateHearingMutation } from "@/hooks/useData";
+import { useCreateHearingMutation, useUpdateHearingMutation } from "@/hooks/useData";
 
-export default function HearingForm({ onClose, onSuccess }: HearingFormProps) {
+export default function HearingForm({ onClose, onSuccess, initialData }: HearingFormProps) {
     const [formData, setFormData] = useState({
-        title: "",
-        committee: "",
-        description: "",
-        scheduled_at: new Date().toISOString().slice(0, 16),
-        status: "upcoming" as "live" | "upcoming" | "archived",
-        stream_url: ""
+        title: initialData?.title || "",
+        committee: initialData?.committee || "",
+        description: initialData?.description || "",
+        scheduled_at: initialData?.scheduled_at
+            ? new Date(initialData.scheduled_at).toISOString().slice(0, 16)
+            : new Date().toISOString().slice(0, 16),
+        status: (initialData?.status || "upcoming") as "live" | "upcoming" | "archived",
+        stream_url: initialData?.stream_url || ""
     });
 
     const createHearingMutation = useCreateHearingMutation();
+    const updateHearingMutation = useUpdateHearingMutation();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        createHearingMutation.mutate({
+        const payload = {
             ...formData,
             scheduled_at: new Date(formData.scheduled_at).toISOString(),
-        }, {
-            onSuccess: () => {
-                onSuccess();
-            },
-            onError: (err: any) => {
-                console.error("Error creating hearing:", err);
-            }
-        });
+        };
+
+        if (initialData?.id) {
+            updateHearingMutation.mutate({ id: initialData.id, ...payload }, {
+                onSuccess: () => onSuccess(),
+                onError: (err: any) => console.error("Error updating hearing:", err)
+            });
+        } else {
+            createHearingMutation.mutate(payload, {
+                onSuccess: () => onSuccess(),
+                onError: (err: any) => console.error("Error creating hearing:", err)
+            });
+        }
     };
+
+    const isPending = createHearingMutation.isPending || updateHearingMutation.isPending;
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
             <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-elevated">
                 <div className="mb-6 flex items-center justify-between">
-                    <h2 className="font-display text-xl font-bold text-foreground">Create New Hearing</h2>
+                    <h2 className="font-display text-xl font-bold text-foreground">
+                        {initialData ? "Edit Hearing" : "Create New Hearing"}
+                    </h2>
                     <button onClick={onClose} className="rounded-lg p-1 hover:bg-muted text-muted-foreground transition-colors">
                         <X className="h-5 w-5" />
                     </button>
@@ -123,8 +136,10 @@ export default function HearingForm({ onClose, onSuccess }: HearingFormProps) {
 
                     <div className="flex justify-end gap-3 pt-4">
                         <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                        <Button type="submit" disabled={createHearingMutation.isPending}>
-                            {createHearingMutation.isPending ? "Creating..." : "Create Hearing"}
+                        <Button type="submit" disabled={isPending}>
+                            {isPending
+                                ? (initialData ? "Saving..." : "Creating...")
+                                : (initialData ? "Save Changes" : "Create Hearing")}
                         </Button>
                     </div>
                 </form>

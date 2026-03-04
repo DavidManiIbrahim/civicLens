@@ -58,6 +58,7 @@ export default function AdminDashboard() {
     const [isAddingAnnouncement, setIsAddingAnnouncement] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [editingUser, setEditingUser] = useState<any>(null);
+    const [editingHearing, setEditingHearing] = useState<any>(null);
     const [editNameField, setEditNameField] = useState("");
     const { toast } = useToast();
 
@@ -139,9 +140,19 @@ export default function AdminDashboard() {
 
     return (
         <Layout>
-            <div className="flex min-h-[calc(100vh-64px)] bg-muted/30">
+            <div className="relative min-h-[calc(100vh-64px)] w-full overflow-hidden">
+                {/* Background Image with Overlay */}
+                <div className="absolute inset-0 z-0">
+                    <img
+                        src="/images/PARLIAMENT-4-1-678x381.jpg"
+                        alt="Background"
+                        className="h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-background/80 backdrop-blur-[2px]" />
+                </div>
+
                 {/* Sidebar */}
-                <aside className="w-64 border-r border-border bg-card hidden md:block">
+                <aside className="w-64 border-r border-border bg-card hidden md:block relative z-10">
                     <nav className="p-4 space-y-1">
                         {sidebarItems.map((item) => (
                             <button
@@ -160,7 +171,7 @@ export default function AdminDashboard() {
                 </aside>
 
                 {/* Main Content */}
-                <main className="flex-1 p-4 md:p-8">
+                <main className="relative z-10 flex-1 p-4 md:p-8">
                     {/* Mobile Tabs */}
                     <div className="mb-6 flex overflow-x-auto pb-2 md:hidden">
                         <div className="flex gap-2">
@@ -180,7 +191,7 @@ export default function AdminDashboard() {
                         </div>
                     </div>
 
-                    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                                 <span>Admin</span>
@@ -324,14 +335,24 @@ export default function AdminDashboard() {
                                                             {new Date(h.scheduled_at).toLocaleDateString()}
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                                                onClick={() => deleteHearing(h.id)}
-                                                            >
-                                                                <Trash className="h-4 w-4" />
-                                                            </Button>
+                                                            <div className="flex justify-end gap-2">
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="icon"
+                                                                    className="h-8 w-8"
+                                                                    onClick={() => setEditingHearing(h)}
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                    onClick={() => deleteHearing(h.id)}
+                                                                >
+                                                                    <Trash className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -549,6 +570,14 @@ export default function AdminDashboard() {
                 <HearingForm
                     onClose={() => setIsAddingHearing(false)}
                     onSuccess={() => { setIsAddingHearing(false); toast({ title: "Hearing created" }); }}
+                />
+            )}
+
+            {editingHearing && (
+                <HearingForm
+                    initialData={editingHearing}
+                    onClose={() => setEditingHearing(null)}
+                    onSuccess={() => { setEditingHearing(null); toast({ title: "Hearing updated" }); }}
                 />
             )}
 

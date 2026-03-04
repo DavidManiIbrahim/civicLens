@@ -38,8 +38,8 @@ export default function HearingPage() {
     // First, normalize m.youtube.com to youtube.com
     let normalizedUrl = url.replace("m.youtube.com", "youtube.com");
 
-    // Standard ID extraction for various youtube formats
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|live\/)([^#\&\?]*).*/;
+    // Standard ID extraction for various youtube formats (watch, embed, live, shorts, etc)
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|live\/|shorts\/)([^#\&\?]*).*/;
     const match = normalizedUrl.match(regExp);
 
     if (match && match[2].trim().length === 11) {

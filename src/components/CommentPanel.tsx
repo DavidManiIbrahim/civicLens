@@ -34,7 +34,7 @@ export default function CommentPanel({ hearingId }: CommentPanelProps) {
   useEffect(() => {
     setNewComment(draftedComments[hearingId] || "");
     setHasDraft(!!draftedComments[hearingId]);
-    
+
     fetchComments();
 
     const channel = supabase
@@ -50,7 +50,7 @@ export default function CommentPanel({ hearingId }: CommentPanelProps) {
   const fetchComments = async () => {
     const { data } = await supabase
       .from("comments")
-      .select("*")
+      .select("*, profile:profiles(display_name)")
       .eq("hearing_id", hearingId as any)
       .order("created_at", { ascending: false });
     if (data) {
