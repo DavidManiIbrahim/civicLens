@@ -13,13 +13,15 @@ import {
   LogOut,
   User,
   Shield,
+  Bell,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/hearing", label: "Live Hearing", icon: Radio },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, authRequired: true },
+  { to: "/hearing", label: "Live Hearing", icon: Radio, authRequired: false },
+  { to: "/announcements", label: "Announcements", icon: Bell, authRequired: true },
 ];
 
 export default function Layout({ children }: { children: ReactNode }) {
@@ -29,11 +31,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { user, profile, isAdmin, signOut } = useAuth();
 
   const filteredNavItems = navItems.filter((item) => {
-    if (!user) {
-      // For visitors, only show specific public-facing links
-      return item.to === "/hearing";
-    }
-    // For logged in users, show all (or could filter further if needed)
+    if (!user) return !item.authRequired;
     return true;
   });
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import HearingCard from "@/components/HearingCard";
 import StatsCard from "@/components/StatsCard";
-import { Radio, Users, MessageSquare, TrendingUp, ArrowRight } from "lucide-react";
+import { Radio, Users, MessageSquare, TrendingUp, ArrowRight, Bell } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroImage from "/images/PARLIAMENT-4-1-678x381.jpg";
 import { supabase } from "@/integrations/supabase/client";
@@ -112,18 +112,30 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Announcements */}
+      {/* Announcements - visible to all users */}
       {displayAnnouncements.length > 0 && (
-        <section className="bg-muted/30 py-16">
+        <section className="bg-muted/40 border-t border-border py-14">
           <div className="container">
-            <h2 className="mb-8 font-display text-2xl font-bold text-foreground">Latest Updates</h2>
-            <div className="grid gap-6 md:grid-cols-3">
+            <div className="mb-8 flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10 text-accent">
+                <Bell className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="font-display text-2xl font-bold text-foreground">Official Updates</h2>
+                <p className="text-sm text-muted-foreground">Latest circulars and policy announcements</p>
+              </div>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {displayAnnouncements.map((post) => (
-                <div key={post.id} className="rounded-xl border border-border bg-card p-6 shadow-sm">
-                  <span className="text-xs font-semibold text-accent uppercase tracking-wider">Circular</span>
-                  <h3 className="mt-2 mb-3 text-lg font-bold line-clamp-1">{post.title}</h3>
-                  <p className="mb-4 text-sm text-muted-foreground line-clamp-3">{post.content}</p>
-                  <p className="text-[10px] text-muted-foreground mt-4">{new Date(post.created_at).toLocaleDateString()}</p>
+                <div key={post.id} className="group rounded-xl border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md hover:border-accent/40">
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent">
+                      Official Circular
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">{new Date(post.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</span>
+                  </div>
+                  <h3 className="mb-2 text-base font-bold leading-snug text-foreground group-hover:text-accent transition-colors line-clamp-2">{post.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4">{post.content}</p>
                 </div>
               ))}
             </div>

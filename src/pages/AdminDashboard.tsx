@@ -63,6 +63,7 @@ export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState<Tab>("overview");
     const [isAddingHearing, setIsAddingHearing] = useState(false);
     const [isAddingAnnouncement, setIsAddingAnnouncement] = useState(false);
+    const [editingAnnouncement, setEditingAnnouncement] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [editingUser, setEditingUser] = useState<any>(null);
     const [editingHearing, setEditingHearing] = useState<any>(null);
@@ -568,6 +569,13 @@ export default function AdminDashboard() {
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
+                                                        onClick={() => setEditingAnnouncement(post)}
+                                                    >
+                                                        <Pencil className="h-4 w-4 mr-1" /> Edit
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
                                                         onClick={() => toggleAnnouncementPublish(post.id, post.is_published)}
                                                     >
                                                         {post.is_published ? 'Unpublish' : 'Publish'}
@@ -641,6 +649,14 @@ export default function AdminDashboard() {
                 <AnnouncementForm
                     onClose={() => setIsAddingAnnouncement(false)}
                     onSuccess={() => { setIsAddingAnnouncement(false); toast({ title: "Post created" }); }}
+                />
+            )}
+
+            {editingAnnouncement && (
+                <AnnouncementForm
+                    initialData={editingAnnouncement}
+                    onClose={() => setEditingAnnouncement(null)}
+                    onSuccess={() => { setEditingAnnouncement(null); }}
                 />
             )}
 
