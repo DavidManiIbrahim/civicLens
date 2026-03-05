@@ -15,16 +15,28 @@ export default function AdminPeoplesView() {
     const { data: hearingsData } = useHearings();
 
     useEffect(() => {
-        if (usersData && usersData.length > 0) setCachedUsers(usersData);
-    }, [usersData, setCachedUsers]);
+        if (usersData && usersData.length > 0) {
+            if (JSON.stringify(cachedUsers) !== JSON.stringify(usersData)) {
+                setCachedUsers(usersData);
+            }
+        }
+    }, [usersData, cachedUsers, setCachedUsers]);
 
     useEffect(() => {
-        if (commentsData && commentsData.length > 0) setCachedComments(commentsData);
-    }, [commentsData, setCachedComments]);
+        if (commentsData && commentsData.length > 0) {
+            if (JSON.stringify(cachedComments) !== JSON.stringify(commentsData)) {
+                setCachedComments(commentsData);
+            }
+        }
+    }, [commentsData, cachedComments, setCachedComments]);
 
     useEffect(() => {
-        if (hearingsData && hearingsData.length > 0) setCachedHearings(hearingsData);
-    }, [hearingsData, setCachedHearings]);
+        if (hearingsData && hearingsData.length > 0) {
+            if (JSON.stringify(cachedHearings) !== JSON.stringify(hearingsData)) {
+                setCachedHearings(hearingsData);
+            }
+        }
+    }, [hearingsData, cachedHearings, setCachedHearings]);
 
     const users = (usersData && usersData.length > 0) ? usersData : cachedUsers;
     const comments = (commentsData && commentsData.length > 0) ? commentsData : cachedComments;

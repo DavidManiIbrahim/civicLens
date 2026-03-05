@@ -9,8 +9,12 @@ export default function SentimentDashboard() {
   const { data: commentsData } = useComments();
 
   useEffect(() => {
-    if (commentsData && commentsData.length > 0) setCachedComments(commentsData);
-  }, [commentsData, setCachedComments]);
+    if (commentsData && commentsData.length > 0) {
+      if (JSON.stringify(cachedComments) !== JSON.stringify(commentsData)) {
+        setCachedComments(commentsData);
+      }
+    }
+  }, [commentsData, cachedComments, setCachedComments]);
 
   const comments = (commentsData && commentsData.length > 0) ? commentsData : cachedComments;
   const total = (Array.isArray(comments) ? comments : []).length;

@@ -21,23 +21,35 @@ export default function Index() {
   const { data: commentsData = [] } = useComments();
   const { data: announcementsData = [] } = useAnnouncements();
 
-  // Unified sync effects - only update when data actually arrives from DB
+  // Unified sync effects with deep comparison to avoid infinite loops
   useEffect(() => {
-    if (hearingsData && hearingsData.length > 0) setCachedHearings(hearingsData);
-  }, [hearingsData, setCachedHearings]);
+    if (hearingsData && hearingsData.length > 0) {
+      if (JSON.stringify(cachedHearings) !== JSON.stringify(hearingsData)) {
+        setCachedHearings(hearingsData);
+      }
+    }
+  }, [hearingsData, cachedHearings, setCachedHearings]);
 
   useEffect(() => {
-    if (commentsData && commentsData.length > 0) setCachedComments(commentsData);
-  }, [commentsData, setCachedComments]);
+    if (commentsData && commentsData.length > 0) {
+      if (JSON.stringify(cachedComments) !== JSON.stringify(commentsData)) {
+        setCachedComments(commentsData);
+      }
+    }
+  }, [commentsData, cachedComments, setCachedComments]);
 
   useEffect(() => {
-    if (announcementsData && announcementsData.length > 0) setCachedAnnouncements(announcementsData);
-  }, [announcementsData, setCachedAnnouncements]);
+    if (announcementsData && announcementsData.length > 0) {
+      if (JSON.stringify(cachedAnnouncements) !== JSON.stringify(announcementsData)) {
+        setCachedAnnouncements(announcementsData);
+      }
+    }
+  }, [announcementsData, cachedAnnouncements, setCachedAnnouncements]);
 
-  // Use the cached values for rendering to ensure instant UI + eventual consistency
-  const hearings = hearingsData.length > 0 ? hearingsData : cachedHearings;
-  const comments = commentsData.length > 0 ? commentsData : cachedComments;
-  const announcements = announcementsData.length > 0 ? announcementsData : cachedAnnouncements;
+  // Use fresh data if available, otherwise fallback to cache
+  const hearings = (hearingsData && hearingsData.length > 0) ? hearingsData : cachedHearings;
+  const comments = (commentsData && commentsData.length > 0) ? commentsData : cachedComments;
+  const displayAnnouncements = (announcementsData && announcementsData.length > 0) ? announcementsData : cachedAnnouncements;
 
   if (loading && !user) {
     return (
@@ -101,12 +113,12 @@ export default function Index() {
       </section>
 
       {/* Announcements */}
-      {announcements.length > 0 && (
+      {displayAnnouncements.length > 0 && (
         <section className="bg-muted/30 py-16">
           <div className="container">
             <h2 className="mb-8 font-display text-2xl font-bold text-foreground">Latest Updates</h2>
             <div className="grid gap-6 md:grid-cols-3">
-              {announcements.map((post) => (
+              {displayAnnouncements.map((post) => (
                 <div key={post.id} className="rounded-xl border border-border bg-card p-6 shadow-sm">
                   <span className="text-xs font-semibold text-accent uppercase tracking-wider">Circular</span>
                   <h3 className="mt-2 mb-3 text-lg font-bold line-clamp-1">{post.title}</h3>

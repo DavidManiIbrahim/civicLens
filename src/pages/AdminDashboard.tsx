@@ -45,6 +45,9 @@ import {
     useUpdateProfileMutation,
     useDeleteProfileMutation,
     useRecalculateSentimentMutation,
+    useCreateAnnouncementMutation,
+    useUpdateAnnouncementMutation,
+    useDeleteAnnouncementMutation,
 } from "@/hooks/useData";
 
 import AdminAuth from "@/components/admin/AdminAuth";
@@ -109,9 +112,9 @@ export default function AdminDashboard() {
     const updateProfileMutation = useUpdateProfileMutation();
     const deleteProfileMutation = useDeleteProfileMutation();
     const recalcSentimentMutation = useRecalculateSentimentMutation();
-    // Announcement mutations placeholder (table not yet created)
-    const updateAnnouncementMutation = { mutate: (_a: any, _b?: any) => { } } as any;
-    const deleteAnnouncementMutation = { mutate: (_a: any, _b?: any) => { } } as any;
+    const createAnnouncementMutation = useCreateAnnouncementMutation();
+    const updateAnnouncementMutation = useUpdateAnnouncementMutation();
+    const deleteAnnouncementMutation = useDeleteAnnouncementMutation();
 
     const updateHearingStatus = async (hearingId: string, newStatus: string) => {
         updateHearingStatusMutation.mutate({ id: hearingId, status: newStatus }, {
@@ -142,10 +145,12 @@ export default function AdminDashboard() {
     };
 
     const deleteAnnouncement = async (id: string) => {
-        deleteAnnouncementMutation.mutate(id, {
-            onSuccess: () => toast({ title: "Post removed" }),
-            onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
-        });
+        if (window.confirm("Are you sure you want to delete this circular?")) {
+            deleteAnnouncementMutation.mutate(id, {
+                onSuccess: () => toast({ title: "Post removed" }),
+                onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" })
+            });
+        }
     };
 
     // Show loading while auth/profile is being fetched

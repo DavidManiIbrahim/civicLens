@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useCreateAnnouncementMutation } from "@/hooks/useData";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AnnouncementFormProps {
     onClose: () => void;
@@ -12,6 +14,8 @@ interface AnnouncementFormProps {
 }
 
 export default function AnnouncementForm({ onClose, onSuccess }: AnnouncementFormProps) {
+    const { mutate: createAnnouncement, isPending } = useCreateAnnouncementMutation();
+    const { user } = useAuth();
     const { toast } = useToast();
     const [formData, setFormData] = useState({
         title: "",
@@ -20,9 +24,21 @@ export default function AnnouncementForm({ onClose, onSuccess }: AnnouncementFor
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Announcements table not yet created - placeholder
-        toast({ title: "Feature coming soon", description: "Announcements will be available in a future update." });
-        onClose();
+        if (!user) return;
+
+        createAnnouncement({
+            title: formData.title,
+            content: formData.content,
+            author_id: user.id,
+            is_published: true
+        }, {
+            onSuccess: () => {
+                onSuccess();
+            },
+            onError: (err: any) => {
+                toast({ title: "Error", description: err.message, variant: "destructive" });
+            }
+        });
     };
 
     return (

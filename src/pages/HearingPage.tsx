@@ -15,7 +15,7 @@ import { MessageSquare } from "lucide-react";
 
 
 export default function HearingPage() {
-  const { id } = useParams();
+  const { id: paramId } = useParams();
   const { user } = useAuth();
   const [hearing, setHearing] = useState<any>(null);
   const [recentlyViewed, setRecentlyViewed] = useLocalStorage<Array<{ id: string; title: string; timestamp: number }>>("app:recently-viewed-hearings", []);
@@ -24,8 +24,8 @@ export default function HearingPage() {
   useEffect(() => {
     const query = supabase.from("hearings").select("*");
 
-    if (id) {
-      query.eq("id", id as any);
+    if (paramId) {
+      query.eq("id", paramId as any);
     } else {
       query.eq("status", "live" as any).limit(1);
     }
@@ -40,9 +40,9 @@ export default function HearingPage() {
         });
       }
     });
-  }, [id]);
+  }, [paramId]);
 
-  const hearingId = id || hearing?.id || "";
+  const hearingId = paramId || hearing?.id || "";
   const liveViewers = useViewerCount(hearingId || undefined);
   const { data: hearingComments = [] } = useComments(hearingId);
 

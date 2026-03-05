@@ -178,13 +178,51 @@ export function useTranscripts(hearingId?: string) {
 export function useTrackInteractionMutation() {
     return useMutation({
         mutationFn: async ({ userId, hearingId, type }: { userId: string; hearingId: string; type: string }) => {
-            const { error } = await supabase.from("user_interactions").insert({
+            const { error } = await supabase.from("user_interactions").upsert({
                 user_id: userId,
                 hearing_id: hearingId,
                 interaction_type: type,
-            } as any);
-            // Ignore unique constraint errors (already tracked)
-            if (error && error.code !== "23505") throw error;
+            } as any, { onConflict: 'user_id, hearing_id, interaction_type' });
+            if (error) throw error;
+        },
+    });
+}
+
+export function useCreateAnnouncementMutation() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (newAnnouncement: any) => {
+            const { error } = await supabase.from("announcements").insert([newAnnouncement] as any);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["announcements"] });
+        },
+    });
+}
+
+export function useUpdateAnnouncementMutation() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, ...updates }: { id: string;[key: string]: any }) => {
+            const { error } = await supabase.from("announcements").update(updates as any).eq("id", id as any);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["announcements"] });
+        },
+    });
+}
+
+export function useDeleteAnnouncementMutation() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase.from("announcements").delete().eq("id", id as any);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["announcements"] });
         },
     });
 }
