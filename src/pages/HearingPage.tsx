@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useViewerCount } from "@/hooks/useViewerCount";
 
 
 export default function HearingPage() {
@@ -37,30 +38,7 @@ export default function HearingPage() {
   }, [id]);
 
   const hearingId = id || hearing?.id || "";
-
-  useEffect(() => {
-    if (!hearingId) return;
-
-    // Track views globally for this session
-    const sessionsViews = JSON.parse(sessionStorage.getItem("app:viewed-sessions") || "[]");
-
-    if (!sessionsViews.includes(hearingId)) {
-      // RPC is not found, so use direct update
-      supabase.from("hearings")
-        .select("viewers")
-        .eq("id", hearingId as any)
-        .single()
-        .then(({ data }) => {
-          const current = (data as any)?.viewers || 0;
-          supabase.from("hearings")
-            .update({ viewers: current + 1 } as any)
-            .eq("id", hearingId as any)
-            .then(() => {
-              sessionStorage.setItem("app:viewed-sessions", JSON.stringify([...sessionsViews, hearingId]));
-            });
-        });
-    }
-  }, [hearingId]);
+  const liveViewers = useViewerCount(hearingId || undefined);
 
   const getEmbedUrl = (url: string) => {
     if (!url) return "";
@@ -105,7 +83,7 @@ export default function HearingPage() {
           <div className="mt-2 flex items-center gap-6 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Users className="h-4 w-4" />
-              {hearing?.viewers?.toLocaleString() || "0"} watching
+              {liveViewers > 0 ? liveViewers.toLocaleString() : (hearing?.viewers?.toLocaleString() || "0")} watching
             </span>
             <span className="flex items-center gap-1.5">
               <Clock className="h-4 w-4" />

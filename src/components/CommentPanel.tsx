@@ -185,24 +185,18 @@ export default function CommentPanel({ hearingId }: CommentPanelProps) {
     ));
     setLikedComments(prev => [...prev, commentId]);
 
-    const { error } = await supabase.rpc("increment_comment_upvotes", { comment_id: commentId });
+    const commentToUpdate = comments.find(c => c.id === commentId);
+    const { error } = await supabase
+      .from("comments")
+      .update({ upvotes: (commentToUpdate?.upvotes || 0) + 1 } as any)
+      .eq("id", commentId as any);
 
     if (error) {
-      // If RPC fails (e.g. not created yet), fallback to manual update
-      const commentToUpdate = comments.find(c => c.id === commentId);
-      const { error: updateError } = await supabase
-        .from("comments")
-        .update({ upvotes: (commentToUpdate?.upvotes || 0) + 1 } as any)
-        .eq("id", commentId as any);
-
-      if (updateError) {
-        // Revert on serious error
-        setComments(prev => prev.map(c =>
-          c.id === commentId ? { ...c, upvotes: (c.upvotes || 0) - 1 } : c
-        ));
-        setLikedComments(prev => prev.filter(id => id !== commentId));
-        toast({ title: "Error", description: "Could not like comment.", variant: "destructive" });
-      }
+      setComments(prev => prev.map(c =>
+        c.id === commentId ? { ...c, upvotes: (c.upvotes || 0) - 1 } : c
+      ));
+      setLikedComments(prev => prev.filter(id => id !== commentId));
+      toast({ title: "Error", description: "Could not like comment.", variant: "destructive" });
     }
   };
 

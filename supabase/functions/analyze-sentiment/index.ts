@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-platform",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -10,12 +10,12 @@ serve(async (req) => {
 
   try {
     const { text, type } = await req.json();
-    const API_KEY = Deno.env.get("CIVIC_VOICE_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
-    if (!API_KEY) throw new Error("AI API Key is not configured");
+    const API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     let systemPrompt = "";
     const body: any = {
-      model: "google/gemini-1.5-flash", // Fixed: use established model name
+      model: "google/gemini-3-flash-preview",
       messages: [],
     };
 
@@ -92,7 +92,7 @@ serve(async (req) => {
       ];
     }
 
-    const GATEWAY_URL = Deno.env.get("AI_GATEWAY_URL") || "https://ai.gateway.lovable.dev/v1/chat/completions";
+    const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
     const response = await fetch(GATEWAY_URL, {
       method: "POST",
