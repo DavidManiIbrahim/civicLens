@@ -68,7 +68,7 @@ export default function ProfilePage() {
 
     return (
         <Layout>
-            <div className="container max-w-3xl py-12">
+            <div className="container max-w-3xl px-4 sm:px-6 py-8 sm:py-12">
                 {/* Header */}
                 <div className="mb-8 flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:gap-6 sm:text-left">
                     <div className="relative group cursor-pointer" onClick={() => document.getElementById("avatar-input")?.click()}>
