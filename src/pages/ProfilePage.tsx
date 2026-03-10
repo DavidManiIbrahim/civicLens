@@ -195,7 +195,7 @@ export default function ProfilePage() {
                                 <span className="text-muted-foreground">Joined</span>
                                 <span className="font-medium">{new Date(user.created_at).toLocaleDateString()}</span>
                             </div>
-                            <div className="flex justify-between border-b border-border pb-2">
+                            <div className="flex flex-col sm:flex-row justify-between border-b border-border pb-2 gap-1">
                                 <span className="text-muted-foreground">Total Comments</span>
                                 <span className="font-medium">{myComments.length}</span>
                             </div>
