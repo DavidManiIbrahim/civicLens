@@ -122,7 +122,7 @@ export function useAnnouncements() {
     return useQuery({
         queryKey: ["announcements"],
         queryFn: async () => {
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from("announcements")
                 .select("*")
                 .order("created_at", { ascending: false });
