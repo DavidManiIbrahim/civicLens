@@ -22,71 +22,49 @@ function formatTimestamp(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-async function fetchCaptionXml(videoId: string): Promise<string> {
-  // Fetch the YouTube page
-  const pageResp = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "Accept-Language": "en-US,en;q=0.9",
-    },
+async function fetchCaptionsViaInnerTube(videoId: string): Promise<string> {
+  // Use YouTube's InnerTube API to get player response (works server-side)
+  const innertubeResp = await fetch("https://www.youtube.com/youtubei/v1/player", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      videoId,
+      context: {
+        client: {
+          clientName: "WEB",
+          clientVersion: "2.20240101.00.00",
+          hl: "en",
+        },
+      },
+    }),
   });
-  const pageHtml = await pageResp.text();
 
-  // Try multiple patterns to find caption tracks
-  let captionUrl: string | null = null;
-
-  // Pattern 1: "captionTracks":[...]
-  const p1 = pageHtml.match(/"captionTracks"\s*:\s*(\[.*?\])/s);
-  if (p1) {
-    try {
-      const tracks = JSON.parse(p1[1]);
-      const track = tracks.find((t: any) => t.languageCode === "en") || tracks[0];
-      if (track?.baseUrl) captionUrl = track.baseUrl.replace(/\\u0026/g, "&");
-    } catch { /* continue */ }
+  if (!innertubeResp.ok) {
+    throw new Error(`InnerTube API returned ${innertubeResp.status}`);
   }
 
-  // Pattern 2: playerCaptionsTracklistRenderer
-  if (!captionUrl) {
-    const p2 = pageHtml.match(/"playerCaptionsTracklistRenderer"\s*:\s*\{.*?"captionTracks"\s*:\s*(\[.*?\])/s);
-    if (p2) {
-      try {
-        const tracks = JSON.parse(p2[1]);
-        const track = tracks.find((t: any) => t.languageCode === "en") || tracks[0];
-        if (track?.baseUrl) captionUrl = track.baseUrl.replace(/\\u0026/g, "&");
-      } catch { /* continue */ }
+  const playerData = await innertubeResp.json();
+  const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+
+  if (!captionTracks || captionTracks.length === 0) {
+    // Fallback: try timedtext API directly
+    for (const kind of ["", "asr"]) {
+      const url = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en${kind ? `&kind=${kind}` : ""}&fmt=srv3`;
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const xml = await resp.text();
+        if (xml.includes("<text")) return xml;
+      }
     }
+    throw new Error("No captions found for this video. The video may not have captions enabled.");
   }
 
-  // Pattern 3: Extract baseUrl directly from the page
-  if (!captionUrl) {
-    const p3 = pageHtml.match(/"baseUrl"\s*:\s*"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]+)"/);
-    if (p3) {
-      captionUrl = p3[1].replace(/\\u0026/g, "&").replace(/\\"/g, '"');
-    }
-  }
+  // Prefer English, fallback to first
+  const track = captionTracks.find((t: any) => t.languageCode === "en") || captionTracks[0];
+  if (!track?.baseUrl) throw new Error("No usable caption track found");
 
-  // Pattern 4: Try the timedtext API directly (works for many videos)
-  if (!captionUrl) {
-    const directUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en&fmt=srv3`;
-    const testResp = await fetch(directUrl);
-    if (testResp.ok) {
-      const testXml = await testResp.text();
-      if (testXml.includes("<text")) return testXml;
-    }
-    // Try auto-generated captions
-    const autoUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en&kind=asr&fmt=srv3`;
-    const autoResp = await fetch(autoUrl);
-    if (autoResp.ok) {
-      const autoXml = await autoResp.text();
-      if (autoXml.includes("<text")) return autoXml;
-    }
-  }
-
-  if (!captionUrl) {
-    throw new Error("No captions found for this video. The video may not have captions enabled, or they may be restricted.");
-  }
-
-  const captionResp = await fetch(captionUrl);
+  const captionResp = await fetch(track.baseUrl);
+  if (!captionResp.ok) throw new Error("Failed to fetch caption track");
   return await captionResp.text();
 }
 
@@ -100,46 +78,27 @@ serve(async (req) => {
     const videoId = extractVideoId(streamUrl);
     if (!videoId) throw new Error("Could not extract YouTube video ID from URL");
 
-    // Step 1: Fetch captions XML
-    const captionXml = await fetchCaptionXml(videoId);
+    // Step 1: Fetch captions
+    const captionXml = await fetchCaptionsViaInnerTube(videoId);
 
-    // Parse XML captions (handles both srv1 and srv3 formats)
-    const captionRegex = /<text[^>]*start="([\d.]+)"[^>]*dur="([\d.]+)"[^>]*>([\s\S]*?)<\/text>/g;
+    // Parse XML captions
+    const captionRegex = /<text[^>]*?start="([\d.]+)"[^>]*?(?:dur="([\d.]+)")?[^>]*?>([\s\S]*?)<\/text>/g;
     const rawCaptions: Array<{ start: number; dur: number; text: string }> = [];
     let match;
     while ((match = captionRegex.exec(captionXml)) !== null) {
       const text = match[3]
-        .replace(/&amp;/g, "&")
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">")
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/<[^>]+>/g, "")
-        .trim();
+        .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/<[^>]+>/g, "").trim();
       if (text) {
-        rawCaptions.push({ start: parseFloat(match[1]), dur: parseFloat(match[2]), text });
-      }
-    }
-
-    // Also try alternate attribute order
-    if (rawCaptions.length === 0) {
-      const altRegex = /<text[^>]*?start="([\d.]+)"[^>]*?>([\s\S]*?)<\/text>/g;
-      while ((match = altRegex.exec(captionXml)) !== null) {
-        const text = match[2]
-          .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-          .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/<[^>]+>/g, "").trim();
-        if (text) {
-          rawCaptions.push({ start: parseFloat(match[1]), dur: 3, text });
-        }
+        rawCaptions.push({ start: parseFloat(match[1]), dur: parseFloat(match[2] || "3"), text });
       }
     }
 
     if (rawCaptions.length === 0) throw new Error("No caption text found in the track");
 
-    // Step 2: Group captions into ~30-second segments
+    // Step 2: Group into ~30s segments
     const segments: Array<{ start: number; text: string }> = [];
     let currentSegment = { start: rawCaptions[0].start, texts: [rawCaptions[0].text] };
-
     for (let i = 1; i < rawCaptions.length; i++) {
       const caption = rawCaptions[i];
       if (caption.start - currentSegment.start > 30) {
@@ -151,7 +110,7 @@ serve(async (req) => {
     }
     segments.push({ start: currentSegment.start, text: currentSegment.texts.join(" ") });
 
-    // Step 3: Use AI to identify speakers
+    // Step 3: AI processing
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -170,8 +129,7 @@ serve(async (req) => {
             role: "system",
             content: `You are a transcript processor for legislative hearings. Given raw YouTube captions, produce structured transcript entries.
 For each segment, identify the speaker if possible (from context clues like "Chairman", "Senator", "Witness", etc). If you can't identify the speaker, use "Speaker".
-Also classify each segment's sentiment as: positive, neutral, or negative.
-Return the result as a JSON array.`,
+Also classify each segment's sentiment as: positive, neutral, or negative.`,
           },
           {
             role: "user",
@@ -191,19 +149,17 @@ Return the result as a JSON array.`,
                   items: {
                     type: "object",
                     properties: {
-                      timestamp: { type: "string", description: "Timestamp like 0:00 or 1:23:45" },
-                      speaker: { type: "string", description: "Speaker name or role" },
-                      role: { type: "string", description: "Speaker's role (e.g. Chairman, Senator, Witness, General)" },
-                      text: { type: "string", description: "Clean transcript text" },
+                      timestamp: { type: "string" },
+                      speaker: { type: "string" },
+                      role: { type: "string" },
+                      text: { type: "string" },
                       sentiment: { type: "string", enum: ["positive", "neutral", "negative"] },
                     },
                     required: ["timestamp", "speaker", "text", "sentiment"],
-                    additionalProperties: false,
                   },
                 },
               },
               required: ["entries"],
-              additionalProperties: false,
             },
           },
         }],
@@ -211,7 +167,7 @@ Return the result as a JSON array.`,
       }),
     });
 
-    // Setup Supabase client
+    // Setup DB
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
@@ -220,15 +176,15 @@ Return the result as a JSON array.`,
     let aiProcessed = false;
 
     if (aiResp.ok) {
-      const aiData = await aiResp.json();
-      const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-      if (toolCall) {
-        try {
+      try {
+        const aiData = await aiResp.json();
+        const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+        if (toolCall) {
           const parsed = JSON.parse(toolCall.function.arguments);
           entries = parsed.entries || [];
           aiProcessed = true;
-        } catch { /* fallback */ }
-      }
+        }
+      } catch { /* fallback */ }
     } else {
       console.error("AI error:", aiResp.status, await aiResp.text());
     }
@@ -243,7 +199,7 @@ Return the result as a JSON array.`,
       }));
     }
 
-    // Clear existing transcripts then insert
+    // Clear and insert
     await supabase.from("transcript_entries").delete().eq("hearing_id", hearingId);
 
     const dbEntries = entries.map((e: any) => ({
