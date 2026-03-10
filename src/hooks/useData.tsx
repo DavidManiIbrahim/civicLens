@@ -107,7 +107,7 @@ export function useComments(hearingId?: string) {
     return useQuery({
         queryKey: ["comments", hearingId],
         queryFn: async () => {
-            let query = supabase.from("comments").select("*");
+            let query = (supabase as any).from("comments").select("*");
             if (hearingId !== undefined) {
                 query = query.eq("hearing_id", hearingId as any);
             }
