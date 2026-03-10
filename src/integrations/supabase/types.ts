@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          is_published: boolean | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          is_published?: boolean | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_published?: boolean | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       comment_upvotes: {
         Row: {
           comment_id: string
@@ -187,6 +217,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "transcript_entries_hearing_id_fkey"
+            columns: ["hearing_id"]
+            isOneToOne: false
+            referencedRelation: "hearings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_interactions: {
+        Row: {
+          created_at: string
+          hearing_id: string
+          id: string
+          interaction_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hearing_id: string
+          id?: string
+          interaction_type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hearing_id?: string
+          id?: string
+          interaction_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_interactions_hearing_id_fkey"
             columns: ["hearing_id"]
             isOneToOne: false
             referencedRelation: "hearings"

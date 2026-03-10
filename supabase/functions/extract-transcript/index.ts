@@ -22,6 +22,74 @@ function formatTimestamp(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+async function fetchCaptionXml(videoId: string): Promise<string> {
+  // Fetch the YouTube page
+  const pageResp = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  });
+  const pageHtml = await pageResp.text();
+
+  // Try multiple patterns to find caption tracks
+  let captionUrl: string | null = null;
+
+  // Pattern 1: "captionTracks":[...]
+  const p1 = pageHtml.match(/"captionTracks"\s*:\s*(\[.*?\])/s);
+  if (p1) {
+    try {
+      const tracks = JSON.parse(p1[1]);
+      const track = tracks.find((t: any) => t.languageCode === "en") || tracks[0];
+      if (track?.baseUrl) captionUrl = track.baseUrl.replace(/\\u0026/g, "&");
+    } catch { /* continue */ }
+  }
+
+  // Pattern 2: playerCaptionsTracklistRenderer
+  if (!captionUrl) {
+    const p2 = pageHtml.match(/"playerCaptionsTracklistRenderer"\s*:\s*\{.*?"captionTracks"\s*:\s*(\[.*?\])/s);
+    if (p2) {
+      try {
+        const tracks = JSON.parse(p2[1]);
+        const track = tracks.find((t: any) => t.languageCode === "en") || tracks[0];
+        if (track?.baseUrl) captionUrl = track.baseUrl.replace(/\\u0026/g, "&");
+      } catch { /* continue */ }
+    }
+  }
+
+  // Pattern 3: Extract baseUrl directly from the page
+  if (!captionUrl) {
+    const p3 = pageHtml.match(/"baseUrl"\s*:\s*"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]+)"/);
+    if (p3) {
+      captionUrl = p3[1].replace(/\\u0026/g, "&").replace(/\\"/g, '"');
+    }
+  }
+
+  // Pattern 4: Try the timedtext API directly (works for many videos)
+  if (!captionUrl) {
+    const directUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en&fmt=srv3`;
+    const testResp = await fetch(directUrl);
+    if (testResp.ok) {
+      const testXml = await testResp.text();
+      if (testXml.includes("<text")) return testXml;
+    }
+    // Try auto-generated captions
+    const autoUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en&kind=asr&fmt=srv3`;
+    const autoResp = await fetch(autoUrl);
+    if (autoResp.ok) {
+      const autoXml = await autoResp.text();
+      if (autoXml.includes("<text")) return autoXml;
+    }
+  }
+
+  if (!captionUrl) {
+    throw new Error("No captions found for this video. The video may not have captions enabled, or they may be restricted.");
+  }
+
+  const captionResp = await fetch(captionUrl);
+  return await captionResp.text();
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -32,35 +100,11 @@ serve(async (req) => {
     const videoId = extractVideoId(streamUrl);
     if (!videoId) throw new Error("Could not extract YouTube video ID from URL");
 
-    // Step 1: Get the video page to find caption track info
-    const pageResp = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
-    });
-    const pageHtml = await pageResp.text();
+    // Step 1: Fetch captions XML
+    const captionXml = await fetchCaptionXml(videoId);
 
-    // Extract captions player response
-    const captionMatch = pageHtml.match(/"captionTracks":\s*(\[.*?\])/);
-    if (!captionMatch) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: "No captions found for this video. Captions must be enabled on YouTube for AI transcript generation.",
-        aiProcessed: false
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const captionTracks = JSON.parse(captionMatch[1]);
-    // Prefer English, fallback to first available
-    const track = captionTracks.find((t: any) => t.languageCode === "en") || captionTracks[0];
-    if (!track?.baseUrl) throw new Error("No usable caption track found");
-
-    // Step 2: Fetch the captions XML
-    const captionResp = await fetch(track.baseUrl);
-    const captionXml = await captionResp.text();
-
-    // Parse XML captions
-    const captionRegex = /<text start="([\d.]+)" dur="([\d.]+)"[^>]*>([\s\S]*?)<\/text>/g;
+    // Parse XML captions (handles both srv1 and srv3 formats)
+    const captionRegex = /<text[^>]*start="([\d.]+)"[^>]*dur="([\d.]+)"[^>]*>([\s\S]*?)<\/text>/g;
     const rawCaptions: Array<{ start: number; dur: number; text: string }> = [];
     let match;
     while ((match = captionRegex.exec(captionXml)) !== null) {
@@ -77,9 +121,22 @@ serve(async (req) => {
       }
     }
 
+    // Also try alternate attribute order
+    if (rawCaptions.length === 0) {
+      const altRegex = /<text[^>]*?start="([\d.]+)"[^>]*?>([\s\S]*?)<\/text>/g;
+      while ((match = altRegex.exec(captionXml)) !== null) {
+        const text = match[2]
+          .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/<[^>]+>/g, "").trim();
+        if (text) {
+          rawCaptions.push({ start: parseFloat(match[1]), dur: 3, text });
+        }
+      }
+    }
+
     if (rawCaptions.length === 0) throw new Error("No caption text found in the track");
 
-    // Step 3: Group captions into ~30-second segments for cleaner transcript
+    // Step 2: Group captions into ~30-second segments
     const segments: Array<{ start: number; text: string }> = [];
     let currentSegment = { start: rawCaptions[0].start, texts: [rawCaptions[0].text] };
 
@@ -94,7 +151,7 @@ serve(async (req) => {
     }
     segments.push({ start: currentSegment.start, text: currentSegment.texts.join(" ") });
 
-    // Step 4: Use AI to identify speakers and clean up the transcript
+    // Step 3: Use AI to identify speakers
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -107,7 +164,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-1.5-flash",
+        model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "system",
@@ -154,44 +211,29 @@ Return the result as a JSON array.`,
       }),
     });
 
-    if (!aiResp.ok) {
-      const errText = await aiResp.text();
-      console.error("AI error:", aiResp.status, errText);
-      // Fallback: save raw segments without AI processing
-      const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-      const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
+    // Setup Supabase client
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
-      const fallbackEntries = segments.map(s => ({
-        hearing_id: hearingId,
-        speaker: "Speaker",
-        role: null,
-        timestamp: formatTimestamp(s.start),
-        text: s.text,
-        sentiment: "neutral",
-      }));
-
-      const { error: insertErr } = await supabase
-        .from("transcript_entries")
-        .insert(fallbackEntries);
-      if (insertErr) throw insertErr;
-
-      return new Response(JSON.stringify({ success: true, count: fallbackEntries.length, aiProcessed: false }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const aiData = await aiResp.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
     let entries: any[] = [];
+    let aiProcessed = false;
 
-    if (toolCall) {
-      const parsed = JSON.parse(toolCall.function.arguments);
-      entries = parsed.entries || [];
+    if (aiResp.ok) {
+      const aiData = await aiResp.json();
+      const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+      if (toolCall) {
+        try {
+          const parsed = JSON.parse(toolCall.function.arguments);
+          entries = parsed.entries || [];
+          aiProcessed = true;
+        } catch { /* fallback */ }
+      }
+    } else {
+      console.error("AI error:", aiResp.status, await aiResp.text());
     }
 
     if (entries.length === 0) {
-      // Fallback
       entries = segments.map(s => ({
         timestamp: formatTimestamp(s.start),
         speaker: "Speaker",
@@ -201,12 +243,7 @@ Return the result as a JSON array.`,
       }));
     }
 
-    // Step 5: Save to database
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
-
-    // Clear existing transcripts for this hearing first
+    // Clear existing transcripts then insert
     await supabase.from("transcript_entries").delete().eq("hearing_id", hearingId);
 
     const dbEntries = entries.map((e: any) => ({
@@ -221,7 +258,7 @@ Return the result as a JSON array.`,
     const { error: insertErr } = await supabase.from("transcript_entries").insert(dbEntries);
     if (insertErr) throw insertErr;
 
-    return new Response(JSON.stringify({ success: true, count: dbEntries.length, aiProcessed: true }), {
+    return new Response(JSON.stringify({ success: true, count: dbEntries.length, aiProcessed }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

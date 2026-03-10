@@ -107,7 +107,7 @@ export function useComments(hearingId?: string) {
     return useQuery({
         queryKey: ["comments", hearingId],
         queryFn: async () => {
-            let query = supabase.from("comments").select("*");
+            let query = (supabase as any).from("comments").select("*");
             if (hearingId !== undefined) {
                 query = query.eq("hearing_id", hearingId as any);
             }
@@ -122,7 +122,7 @@ export function useAnnouncements() {
     return useQuery({
         queryKey: ["announcements"],
         queryFn: async () => {
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from("announcements")
                 .select("*")
                 .order("created_at", { ascending: false });
@@ -178,7 +178,7 @@ export function useTranscripts(hearingId?: string) {
 export function useTrackInteractionMutation() {
     return useMutation({
         mutationFn: async ({ userId, hearingId, type }: { userId: string; hearingId: string; type: string }) => {
-            const { error } = await supabase.from("user_interactions").upsert({
+            const { error } = await (supabase as any).from("user_interactions").upsert({
                 user_id: userId,
                 hearing_id: hearingId,
                 interaction_type: type,
@@ -192,7 +192,7 @@ export function useCreateAnnouncementMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (newAnnouncement: any) => {
-            const { error } = await supabase.from("announcements").insert([newAnnouncement] as any);
+            const { error } = await (supabase as any).from("announcements").insert([newAnnouncement]);
             if (error) throw error;
         },
         onSuccess: () => {
@@ -205,7 +205,7 @@ export function useUpdateAnnouncementMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ id, ...updates }: { id: string;[key: string]: any }) => {
-            const { error } = await supabase.from("announcements").update(updates as any).eq("id", id as any);
+            const { error } = await (supabase as any).from("announcements").update(updates).eq("id", id);
             if (error) throw error;
         },
         onSuccess: () => {
@@ -218,7 +218,7 @@ export function useDeleteAnnouncementMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (id: string) => {
-            const { error } = await supabase.from("announcements").delete().eq("id", id as any);
+            const { error } = await (supabase as any).from("announcements").delete().eq("id", id);
             if (error) throw error;
         },
         onSuccess: () => {
