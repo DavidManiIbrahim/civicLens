@@ -178,7 +178,7 @@ export function useTranscripts(hearingId?: string) {
 export function useTrackInteractionMutation() {
     return useMutation({
         mutationFn: async ({ userId, hearingId, type }: { userId: string; hearingId: string; type: string }) => {
-            const { error } = await supabase.from("user_interactions").upsert({
+            const { error } = await (supabase as any).from("user_interactions").upsert({
                 user_id: userId,
                 hearing_id: hearingId,
                 interaction_type: type,
