@@ -264,7 +264,7 @@ export default function AdminDashboard() {
                         <>
                             {activeTab === "overview" && (
                                 <div className="space-y-8">
-                                    <div className="grid gap-6 md:grid-cols-3 xl:grid-cols-6">
+                                    <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
                                         <div className="group rounded-xl border border-border bg-card p-6 shadow-card transition-all hover:shadow-elevated">
                                             <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                                                 <Radio className="h-5 w-5" />
@@ -453,7 +453,7 @@ export default function AdminDashboard() {
                                                         const neuPct = totalComments ? Math.round((neu / totalComments) * 100) : 0;
                                                         return (
                                                             <tr key={u.id} className="transition-colors hover:bg-muted/30">
-                                                                <td className="px-6 py-4 flex items-center gap-3">
+                                                                <td className="px-4 sm:px-6 py-4 flex items-center gap-3">
                                                                     <div className="h-8 w-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-[10px] font-bold">
                                                                         {u.display_name.slice(0, 2).toUpperCase()}
                                                                     </div>
@@ -560,7 +560,7 @@ export default function AdminDashboard() {
                                         </div>
                                     ) : (
                                         announcements.map(post => (
-                                            <div key={post.id} className="rounded-xl border border-border bg-card p-6 shadow-card flex gap-6">
+                                            <div key={post.id} className="rounded-xl border border-border bg-card p-4 sm:p-6 shadow-card flex flex-col sm:flex-row gap-4 sm:gap-6">
                                                 <div className="flex-1">
                                                     <div className="mb-2 flex items-center gap-2">
                                                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${post.is_published ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
@@ -572,7 +572,7 @@ export default function AdminDashboard() {
                                                     <h3 className="text-xl font-bold mb-2">{post.title}</h3>
                                                     <p className="text-muted-foreground text-sm line-clamp-2">{post.content}</p>
                                                 </div>
-                                                <div className="flex flex-col gap-2">
+                                                <div className="flex flex-row sm:flex-col gap-2">
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
@@ -603,7 +603,7 @@ export default function AdminDashboard() {
 
                             {activeTab === "sentiment" && (
                                 <div className="space-y-6">
-                                    <div className="grid gap-4 md:grid-cols-4">
+                                    <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
                                         <div className="rounded-lg border border-border bg-card p-4">
                                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Comments</p>
                                             <p className="text-2xl font-bold mt-1">{(Array.isArray(comments) ? comments : []).length}</p>

@@ -68,7 +68,7 @@ export default function ProfilePage() {
 
     return (
         <Layout>
-            <div className="container max-w-3xl py-12">
+            <div className="container max-w-3xl px-4 sm:px-6 py-8 sm:py-12">
                 {/* Header */}
                 <div className="mb-8 flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:gap-6 sm:text-left">
                     <div className="relative group cursor-pointer" onClick={() => document.getElementById("avatar-input")?.click()}>
@@ -111,7 +111,7 @@ export default function ProfilePage() {
                         />
                     </div>
                     <div>
-                        <h1 className="font-display text-3xl font-bold text-foreground">{profile?.display_name || "Citizen"}</h1>
+                        <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">{profile?.display_name || "Citizen"}</h1>
                         <p className="text-muted-foreground">{user.email}</p>
                         <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                             <Shield className="h-3 w-3" />
@@ -184,18 +184,18 @@ export default function ProfilePage() {
                             Account Info
                         </h2>
                         <div className="space-y-4 text-sm">
-                            <div className="flex justify-between border-b border-border pb-2">
+                            <div className="flex flex-col sm:flex-row justify-between border-b border-border pb-2 gap-1">
                                 <span className="text-muted-foreground">Account Type</span>
                                 <span className="flex items-center gap-1 font-medium capitalize">
                                     {profile?.role === 'admin' ? <Shield className="h-3 w-3 text-primary" /> : null}
                                     {profile?.role || 'User'}
                                 </span>
                             </div>
-                            <div className="flex justify-between border-b border-border pb-2">
+                            <div className="flex flex-col sm:flex-row justify-between border-b border-border pb-2 gap-1">
                                 <span className="text-muted-foreground">Joined</span>
                                 <span className="font-medium">{new Date(user.created_at).toLocaleDateString()}</span>
                             </div>
-                            <div className="flex justify-between border-b border-border pb-2">
+                            <div className="flex flex-col sm:flex-row justify-between border-b border-border pb-2 gap-1">
                                 <span className="text-muted-foreground">Total Comments</span>
                                 <span className="font-medium">{myComments.length}</span>
                             </div>
