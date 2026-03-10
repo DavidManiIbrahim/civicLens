@@ -205,7 +205,7 @@ export function useUpdateAnnouncementMutation() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ id, ...updates }: { id: string;[key: string]: any }) => {
-            const { error } = await supabase.from("announcements").update(updates as any).eq("id", id as any);
+            const { error } = await (supabase as any).from("announcements").update(updates).eq("id", id);
             if (error) throw error;
         },
         onSuccess: () => {
