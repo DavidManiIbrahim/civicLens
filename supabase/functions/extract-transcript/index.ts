@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { YoutubeTranscript } from "https://esm.sh/youtube-transcript@1.2.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,6 +22,112 @@ function formatTimestamp(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+// Strategy 1: Free third-party transcript API
+async function fetchViaTranscriptApi(videoId: string): Promise<Array<{ start: number; text: string }> | null> {
+  try {
+    const resp = await fetch(`https://youtube-transcript-api-tau-one.vercel.app/api/transcript?video_id=${videoId}&lang=en`);
+    if (!resp.ok) { await resp.text(); return null; }
+    const data = await resp.json();
+    if (data?.transcript && Array.isArray(data.transcript) && data.transcript.length > 0) {
+      return data.transcript.map((item: any) => ({
+        start: item.start || item.offset / 1000 || 0,
+        text: (item.text || "").trim(),
+      })).filter((c: any) => c.text);
+    }
+    return null;
+  } catch (e) {
+    console.error("Transcript API error:", e);
+    return null;
+  }
+}
+
+// Strategy 2: InnerTube API with WEB_EMBEDDED_PLAYER client
+async function fetchViaInnerTube(videoId: string): Promise<Array<{ start: number; text: string }> | null> {
+  try {
+    const resp = await fetch("https://www.youtube.com/youtubei/v1/player", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        videoId,
+        context: {
+          client: {
+            clientName: "WEB_EMBEDDED_PLAYER",
+            clientVersion: "1.20240101.00.00",
+            hl: "en",
+          },
+        },
+      }),
+    });
+    if (!resp.ok) { await resp.text(); return null; }
+    const data = await resp.json();
+    const tracks = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+    if (!tracks?.length) return null;
+
+    const track = tracks.find((t: any) => t.languageCode === "en") || tracks[0];
+    if (!track?.baseUrl) return null;
+
+    const captionResp = await fetch(track.baseUrl + "&fmt=srv3");
+    if (!captionResp.ok) { await captionResp.text(); return null; }
+    const xml = await captionResp.text();
+    if (!xml.includes("<text")) return null;
+
+    const captionRegex = /<text[^>]*?start="([\d.]+)"[^>]*?>([\s\S]*?)<\/text>/g;
+    const captions: Array<{ start: number; text: string }> = [];
+    let m;
+    while ((m = captionRegex.exec(xml)) !== null) {
+      const text = m[2].replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/<[^>]+>/g, "").trim();
+      if (text) captions.push({ start: parseFloat(m[1]), text });
+    }
+    return captions.length > 0 ? captions : null;
+  } catch (e) {
+    console.error("InnerTube error:", e);
+    return null;
+  }
+}
+
+// Strategy 3: Direct timedtext API
+async function fetchViaTimedText(videoId: string): Promise<Array<{ start: number; text: string }> | null> {
+  for (const kind of ["", "asr"]) {
+    try {
+      const url = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en${kind ? `&kind=${kind}` : ""}&fmt=srv3`;
+      const resp = await fetch(url);
+      if (!resp.ok) { await resp.text(); continue; }
+      const xml = await resp.text();
+      if (!xml.includes("<text")) continue;
+
+      const captionRegex = /<text[^>]*?start="([\d.]+)"[^>]*?>([\s\S]*?)<\/text>/g;
+      const captions: Array<{ start: number; text: string }> = [];
+      let m;
+      while ((m = captionRegex.exec(xml)) !== null) {
+        const text = m[2].replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/<[^>]+>/g, "").trim();
+        if (text) captions.push({ start: parseFloat(m[1]), text });
+      }
+      if (captions.length > 0) return captions;
+    } catch { /* next */ }
+  }
+  return null;
+}
+
+async function fetchCaptions(videoId: string): Promise<Array<{ start: number; text: string }>> {
+  console.log(`Fetching captions for video: ${videoId}`);
+
+  console.log("Strategy 1: Third-party transcript API...");
+  let captions = await fetchViaTranscriptApi(videoId);
+  if (captions?.length) { console.log(`Strategy 1 succeeded: ${captions.length} segments`); return captions; }
+
+  console.log("Strategy 2: InnerTube API...");
+  captions = await fetchViaInnerTube(videoId);
+  if (captions?.length) { console.log(`Strategy 2 succeeded: ${captions.length} segments`); return captions; }
+
+  console.log("Strategy 3: Timedtext API...");
+  captions = await fetchViaTimedText(videoId);
+  if (captions?.length) { console.log(`Strategy 3 succeeded: ${captions.length} segments`); return captions; }
+
+  throw new Error("No captions found. The video may not have captions enabled, or all caption sources are unavailable. Try again later.");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -33,55 +138,7 @@ serve(async (req) => {
     const videoId = extractVideoId(streamUrl);
     if (!videoId) throw new Error("Could not extract YouTube video ID from URL");
 
-    // Fetch transcript using youtube-transcript library
-    console.log(`Fetching transcript for video: ${videoId}`);
-    let rawCaptions: Array<{ start: number; dur: number; text: string }>;
-
-    try {
-      const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId, { lang: "en" });
-      rawCaptions = transcriptItems.map((item: any) => ({
-        start: item.offset / 1000,
-        dur: item.duration / 1000,
-        text: item.text?.trim() || "",
-      })).filter((c: any) => c.text);
-      console.log(`Got ${rawCaptions.length} caption segments`);
-    } catch (ytErr: any) {
-      console.error("youtube-transcript error:", ytErr.message);
-      
-      // Fallback: try InnerTube API directly
-      console.log("Trying InnerTube fallback...");
-      const resp = await fetch("https://www.youtube.com/youtubei/v1/player", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          videoId,
-          context: {
-            client: { clientName: "ANDROID", clientVersion: "19.09.37", androidSdkVersion: 30, hl: "en" },
-          },
-        }),
-      });
-      
-      if (!resp.ok) throw new Error(`YouTube API returned ${resp.status}`);
-      const data = await resp.json();
-      const tracks = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-      if (!tracks?.length) throw new Error("No captions found for this video. It may not have captions enabled.");
-      
-      const track = tracks.find((t: any) => t.languageCode === "en") || tracks[0];
-      const captionResp = await fetch(track.baseUrl + "&fmt=srv3");
-      if (!captionResp.ok) throw new Error("Failed to fetch caption track");
-      const xml = await captionResp.text();
-      
-      const captionRegex = /<text[^>]*?start="([\d.]+)"[^>]*?(?:dur="([\d.]+)")?[^>]*?>([\s\S]*?)<\/text>/g;
-      rawCaptions = [];
-      let m;
-      while ((m = captionRegex.exec(xml)) !== null) {
-        const text = m[3].replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-          .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/<[^>]+>/g, "").trim();
-        if (text) rawCaptions.push({ start: parseFloat(m[1]), dur: parseFloat(m[2] || "3"), text });
-      }
-    }
-
-    if (!rawCaptions || rawCaptions.length === 0) throw new Error("No caption text found");
+    const rawCaptions = await fetchCaptions(videoId);
 
     // Group into ~30s segments
     const segments: Array<{ start: number; text: string }> = [];
@@ -118,10 +175,7 @@ serve(async (req) => {
 For each segment, identify the speaker if possible (from context clues like "Chairman", "Senator", "Witness", etc). If you can't identify the speaker, use "Speaker".
 Also classify each segment's sentiment as: positive, neutral, or negative.`,
           },
-          {
-            role: "user",
-            content: `Process these raw captions into structured transcript entries:\n\n${rawTranscript}`,
-          },
+          { role: "user", content: `Process these raw captions into structured transcript entries:\n\n${rawTranscript}` },
         ],
         tools: [{
           type: "function",
