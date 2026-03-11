@@ -25,10 +25,54 @@ interface TranscriptPanelProps {
   streamUrl?: string;
 }
 
+function extractVideoId(url: string): string | null {
+  const normalized = url.replace("m.youtube.com", "youtube.com");
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|live\/|shorts\/)([^#&?]*).*/;
+  const match = normalized.match(regExp);
+  if (match && match[2].trim().length === 11) return match[2].trim();
+  return null;
+}
+
+async function fetchCaptionsClientSide(videoId: string): Promise<Array<{ start: number; text: string }>> {
+  // Fetch the YouTube watch page from the browser (no CAPTCHA for real users)
+  const resp = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
+  if (!resp.ok) throw new Error("Failed to load YouTube page");
+  const html = await resp.text();
+
+  // Extract ytInitialPlayerResponse
+  const match = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});\s*(?:var|<\/script)/s);
+  if (!match) throw new Error("Could not find player data on page");
+
+  const playerData = JSON.parse(match[1]);
+  const tracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+  if (!tracks?.length) throw new Error("No captions available for this video");
+
+  const track = tracks.find((t: any) => t.languageCode === "en") || tracks[0];
+  if (!track?.baseUrl) throw new Error("No caption track URL found");
+
+  const captionResp = await fetch(track.baseUrl + "&fmt=srv3");
+  if (!captionResp.ok) throw new Error("Failed to fetch captions");
+  const xml = await captionResp.text();
+
+  const captionRegex = /<text[^>]*?start="([\d.]+)"[^>]*?>([\s\S]*?)<\/text>/g;
+  const captions: Array<{ start: number; text: string }> = [];
+  let m;
+  while ((m = captionRegex.exec(xml)) !== null) {
+    const text = m[2]
+      .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/<[^>]+>/g, "").trim();
+    if (text) captions.push({ start: parseFloat(m[1]), text });
+  }
+
+  if (captions.length === 0) throw new Error("No caption text found in track");
+  return captions;
+}
+
 export default function TranscriptPanel({ hearingId, streamUrl }: TranscriptPanelProps) {
   const { data: initialTranscripts = [] } = useTranscripts(hearingId);
   const [entries, setEntries] = useState<TranscriptEntry[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [statusMsg, setStatusMsg] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -73,9 +117,19 @@ export default function TranscriptPanel({ hearingId, streamUrl }: TranscriptPane
   const handleGenerateTranscript = async () => {
     if (!hearingId || !streamUrl) return;
     setGenerating(true);
+    setStatusMsg("Extracting captions from YouTube...");
+
     try {
+      const videoId = extractVideoId(streamUrl);
+      if (!videoId) throw new Error("Invalid YouTube URL");
+
+      // Step 1: Extract captions client-side (browser isn't blocked by YouTube)
+      const captions = await fetchCaptionsClientSide(videoId);
+      setStatusMsg(`Got ${captions.length} captions. Processing with AI...`);
+
+      // Step 2: Send captions to edge function for AI processing & storage
       const { data, error } = await supabase.functions.invoke("extract-transcript", {
-        body: { hearingId, streamUrl },
+        body: { hearingId, captions },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -101,6 +155,7 @@ export default function TranscriptPanel({ hearingId, streamUrl }: TranscriptPane
       });
     }
     setGenerating(false);
+    setStatusMsg("");
   };
 
   return (
@@ -138,7 +193,7 @@ export default function TranscriptPanel({ hearingId, streamUrl }: TranscriptPane
             </div>
             {generating ? (
               <>
-                <p className="text-sm font-medium text-foreground">Extracting transcript from YouTube captions...</p>
+                <p className="text-sm font-medium text-foreground">{statusMsg || "Processing..."}</p>
                 <p className="mt-1 text-xs text-muted-foreground opacity-60">AI is processing captions and identifying speakers. This may take a moment.</p>
               </>
             ) : (
